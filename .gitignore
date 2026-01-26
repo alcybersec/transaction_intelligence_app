@@ -67,3 +67,6 @@ htmlcov/
 *.pem
 *.key
 secrets/
+
+# Documents (keep planning docs out of repo)
+*.pdf

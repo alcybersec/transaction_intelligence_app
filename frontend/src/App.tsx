@@ -9,7 +9,11 @@ interface HealthResponse {
 }
 
 function App() {
-  const { data: health, isLoading, error } = useQuery<HealthResponse>({
+  const {
+    data: health,
+    isLoading,
+    error,
+  } = useQuery<HealthResponse>({
     queryKey: ['health'],
     queryFn: async () => {
       const res = await fetch(`${API_URL}/health`)

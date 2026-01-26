@@ -3,8 +3,13 @@
 import os
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+from alembic import context
+
+# Import Base and all models to register them with metadata
+from app.db.base import Base
+from app.db.models import Message  # noqa: F401
 
 config = context.config
 
@@ -12,12 +17,10 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set sqlalchemy.url from environment variable if available
-database_url = os.getenv(
-    "DATABASE_URL", "postgresql://txnuser:txnpass@localhost:5432/txndb"
-)
+database_url = os.getenv("DATABASE_URL", "postgresql://txnuser:txnpass@localhost:5432/txndb")
 config.set_main_option("sqlalchemy.url", database_url)
 
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
