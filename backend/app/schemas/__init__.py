@@ -20,6 +20,24 @@ from app.schemas.transaction import (
     TransactionGroupResponse,
     TransactionNotesUpdate,
 )
+from app.schemas.wallet import (
+    DashboardSummaryResponse,
+    InstitutionListResponse,
+    InstitutionResponse,
+    InstrumentCreateRequest,
+    InstrumentListResponse,
+    InstrumentResponse,
+    InstrumentUpdateRequest,
+    WalletBalanceUpdateResponse,
+    WalletCreateRequest,
+    WalletInstrumentAttachRequest,
+    WalletInstrumentDetachRequest,
+    WalletInstrumentResponse,
+    WalletListResponse,
+    WalletResponse,
+    WalletSummaryResponse,
+    WalletUpdateRequest,
+)
 
 __all__ = [
     # Ingest
@@ -40,4 +58,21 @@ __all__ = [
     "ReviewQueueResponse",
     "ManualParseRequest",
     "ManualParseResponse",
+    # Wallet & Instruments
+    "InstitutionResponse",
+    "InstitutionListResponse",
+    "InstrumentCreateRequest",
+    "InstrumentUpdateRequest",
+    "InstrumentResponse",
+    "InstrumentListResponse",
+    "WalletCreateRequest",
+    "WalletUpdateRequest",
+    "WalletInstrumentAttachRequest",
+    "WalletInstrumentDetachRequest",
+    "WalletInstrumentResponse",
+    "WalletResponse",
+    "WalletListResponse",
+    "WalletBalanceUpdateResponse",
+    "WalletSummaryResponse",
+    "DashboardSummaryResponse",
 ]
