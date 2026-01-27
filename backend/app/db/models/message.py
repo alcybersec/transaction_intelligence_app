@@ -15,6 +15,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from app.db.base import Base
 
@@ -57,7 +58,11 @@ class Message(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # Source identification
-    source = Column(Enum(MessageSource), nullable=False, index=True)
+    source = Column(
+        Enum(MessageSource, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        index=True,
+    )
     source_uid = Column(
         String(255),
         nullable=False,
@@ -102,13 +107,13 @@ class Message(Base):
 
     # Parsing state
     parse_status = Column(
-        Enum(ParseStatus),
+        Enum(ParseStatus, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=ParseStatus.PENDING,
         index=True,
     )
     parse_mode = Column(
-        Enum(ParseMode),
+        Enum(ParseMode, values_callable=lambda x: [e.value for e in x]),
         nullable=True,
         comment="Which parsing method was used",
     )
@@ -117,6 +122,9 @@ class Message(Base):
         nullable=True,
         comment="Error message if parsing failed",
     )
+
+    # Relationships
+    transaction_evidence = relationship("TransactionEvidence", back_populates="message")
 
     # Constraints for idempotency
     __table_args__ = (
