@@ -9,6 +9,7 @@ from app.db.models.transaction import (
     TransactionGroup,
     TransactionStatus,
 )
+from app.db.models.user import User
 from app.db.models.vendor import (
     Category,
     CategorySuggestion,
@@ -43,4 +44,6 @@ __all__ = [
     "TransactionDirection",
     "TransactionStatus",
     "EvidenceRole",
+    # User
+    "User",
 ]

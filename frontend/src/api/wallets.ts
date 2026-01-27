@@ -2,6 +2,8 @@
  * Wallet and Instrument API client functions.
  */
 
+import { authFetch } from './auth'
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 // ============== Types ==============
@@ -70,7 +72,7 @@ export interface DashboardSummary {
 
 // Institutions
 export async function fetchInstitutions(): Promise<Institution[]> {
-  const res = await fetch(`${API_URL}/wallets/institutions`)
+  const res = await authFetch(`${API_URL}/wallets/institutions`)
   if (!res.ok) throw new Error('Failed to fetch institutions')
   const data = await res.json()
   return data.institutions
@@ -85,7 +87,7 @@ export async function fetchInstruments(params?: {
   if (params?.institution_id) searchParams.set('institution_id', params.institution_id)
   if (params?.unassigned_only) searchParams.set('unassigned_only', 'true')
 
-  const res = await fetch(`${API_URL}/wallets/instruments?${searchParams}`)
+  const res = await authFetch(`${API_URL}/wallets/instruments?${searchParams}`)
   if (!res.ok) throw new Error('Failed to fetch instruments')
   const data = await res.json()
   return data.instruments
@@ -98,7 +100,7 @@ export async function createInstrument(data: {
   last4?: string
   account_tail?: string
 }): Promise<Instrument> {
-  const res = await fetch(`${API_URL}/wallets/instruments`, {
+  const res = await authFetch(`${API_URL}/wallets/instruments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -117,7 +119,7 @@ export async function updateInstrument(
     is_active?: boolean
   }
 ): Promise<Instrument> {
-  const res = await fetch(`${API_URL}/wallets/instruments/${id}`, {
+  const res = await authFetch(`${API_URL}/wallets/instruments/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -127,7 +129,7 @@ export async function updateInstrument(
 }
 
 export async function deleteInstrument(id: string): Promise<void> {
-  const res = await fetch(`${API_URL}/wallets/instruments/${id}`, {
+  const res = await authFetch(`${API_URL}/wallets/instruments/${id}`, {
     method: 'DELETE',
   })
   if (!res.ok) throw new Error('Failed to delete instrument')
@@ -135,14 +137,14 @@ export async function deleteInstrument(id: string): Promise<void> {
 
 // Wallets
 export async function fetchWallets(): Promise<Wallet[]> {
-  const res = await fetch(`${API_URL}/wallets`)
+  const res = await authFetch(`${API_URL}/wallets`)
   if (!res.ok) throw new Error('Failed to fetch wallets')
   const data = await res.json()
   return data.wallets
 }
 
 export async function fetchWallet(id: string): Promise<Wallet> {
-  const res = await fetch(`${API_URL}/wallets/${id}`)
+  const res = await authFetch(`${API_URL}/wallets/${id}`)
   if (!res.ok) throw new Error('Failed to fetch wallet')
   return res.json()
 }
@@ -152,7 +154,7 @@ export async function createWallet(data: {
   currency?: string
   instrument_ids?: string[]
 }): Promise<Wallet> {
-  const res = await fetch(`${API_URL}/wallets`, {
+  const res = await authFetch(`${API_URL}/wallets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -171,7 +173,7 @@ export async function updateWallet(
     currency?: string
   }
 ): Promise<Wallet> {
-  const res = await fetch(`${API_URL}/wallets/${id}`, {
+  const res = await authFetch(`${API_URL}/wallets/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -181,7 +183,7 @@ export async function updateWallet(
 }
 
 export async function deleteWallet(id: string): Promise<void> {
-  const res = await fetch(`${API_URL}/wallets/${id}`, {
+  const res = await authFetch(`${API_URL}/wallets/${id}`, {
     method: 'DELETE',
   })
   if (!res.ok) throw new Error('Failed to delete wallet')
@@ -191,7 +193,7 @@ export async function attachInstruments(
   walletId: string,
   instrumentIds: string[]
 ): Promise<Wallet> {
-  const res = await fetch(`${API_URL}/wallets/${walletId}/instruments`, {
+  const res = await authFetch(`${API_URL}/wallets/${walletId}/instruments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ instrument_ids: instrumentIds }),
@@ -204,7 +206,7 @@ export async function detachInstruments(
   walletId: string,
   instrumentIds: string[]
 ): Promise<Wallet> {
-  const res = await fetch(`${API_URL}/wallets/${walletId}/instruments`, {
+  const res = await authFetch(`${API_URL}/wallets/${walletId}/instruments`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ instrument_ids: instrumentIds }),
@@ -215,7 +217,7 @@ export async function detachInstruments(
 
 // Dashboard
 export async function fetchDashboardSummary(): Promise<DashboardSummary> {
-  const res = await fetch(`${API_URL}/wallets/dashboard/summary`)
+  const res = await authFetch(`${API_URL}/wallets/dashboard/summary`)
   if (!res.ok) throw new Error('Failed to fetch dashboard summary')
   return res.json()
 }
@@ -227,7 +229,7 @@ export async function recalculateBalance(walletId: string): Promise<{
   currency: string
   updated_at: string
 }> {
-  const res = await fetch(`${API_URL}/wallets/${walletId}/recalculate-balance`, {
+  const res = await authFetch(`${API_URL}/wallets/${walletId}/recalculate-balance`, {
     method: 'POST',
   })
   if (!res.ok) throw new Error('Failed to recalculate balance')

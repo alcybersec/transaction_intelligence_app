@@ -1,5 +1,14 @@
 """Pydantic schemas package."""
 
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    LoginRequest,
+    RefreshRequest,
+    RefreshResponse,
+    TokenResponse,
+    UserCreate,
+    UserResponse,
+)
 from app.schemas.ingest import (
     MessageResponse,
     SMSIngestBatchRequest,
@@ -40,6 +49,14 @@ from app.schemas.wallet import (
 )
 
 __all__ = [
+    # Auth
+    "LoginRequest",
+    "TokenResponse",
+    "RefreshRequest",
+    "RefreshResponse",
+    "UserResponse",
+    "UserCreate",
+    "ChangePasswordRequest",
     # Ingest
     "SMSIngestRequest",
     "SMSIngestBatchRequest",

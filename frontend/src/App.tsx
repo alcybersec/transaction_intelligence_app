@@ -1,7 +1,21 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Settings, LayoutDashboard, Activity } from 'lucide-react'
+import {
+  Settings,
+  LayoutDashboard,
+  Activity,
+  Store,
+  Tag,
+  LogOut,
+  Receipt,
+} from 'lucide-react'
+import { useAuth } from './contexts/AuthContext'
+import { LoginPage } from './components/LoginPage'
 import { WalletSettings } from './components/WalletSettings'
+import { TransactionList } from './components/TransactionList'
+import { TransactionDetail } from './components/TransactionDetail'
+import { CategoriesManager } from './components/CategoriesManager'
+import { VendorList } from './components/VendorList'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -11,10 +25,12 @@ interface HealthResponse {
   version: string
 }
 
-type Tab = 'dashboard' | 'settings'
+type Tab = 'transactions' | 'vendors' | 'categories' | 'settings'
 
-function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('settings')
+function AuthenticatedApp() {
+  const { user, logout } = useAuth()
+  const [activeTab, setActiveTab] = useState<Tab>('transactions')
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
 
   const {
     data: health,
@@ -38,7 +54,7 @@ function App() {
             <h1 className="text-2xl font-bold text-foreground">
               Transaction Intelligence
             </h1>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               {healthLoading && (
                 <span className="text-sm text-muted-foreground">Checking API...</span>
               )}
@@ -54,21 +70,58 @@ function App() {
                   API: {health.status}
                 </span>
               )}
+              <div className="flex items-center gap-2 pl-4 border-l border-border">
+                <span className="text-sm text-muted-foreground">
+                  {user?.display_name || user?.username}
+                </span>
+                <button
+                  onClick={logout}
+                  className="p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+                  title="Logout"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Navigation Tabs */}
           <nav className="flex gap-1 mt-4 -mb-px">
             <button
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => {
+                setActiveTab('transactions')
+                setSelectedTransactionId(null)
+              }}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
-                activeTab === 'dashboard'
+                activeTab === 'transactions'
                   ? 'border-primary text-primary bg-muted/50'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
               }`}
             >
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
+              <Receipt className="h-4 w-4" />
+              Transactions
+            </button>
+            <button
+              onClick={() => setActiveTab('vendors')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                activeTab === 'vendors'
+                  ? 'border-primary text-primary bg-muted/50'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
+              }`}
+            >
+              <Store className="h-4 w-4" />
+              Vendors
+            </button>
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+                activeTab === 'categories'
+                  ? 'border-primary text-primary bg-muted/50'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
+              }`}
+            >
+              <Tag className="h-4 w-4" />
+              Categories
             </button>
             <button
               onClick={() => setActiveTab('settings')}
@@ -79,27 +132,55 @@ function App() {
               }`}
             >
               <Settings className="h-4 w-4" />
-              Wallet Settings
+              Settings
             </button>
           </nav>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            <div className="rounded-lg border border-border bg-card p-6">
-              <h2 className="text-lg font-semibold text-card-foreground mb-4 flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Dashboard
-              </h2>
+        {activeTab === 'transactions' && (
+          <div className="max-w-4xl">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold">Transactions</h2>
               <p className="text-muted-foreground">
-                Dashboard with transaction analytics will be available in Milestone 4.
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                For now, configure your wallets and instruments in the Settings tab.
+                View and manage your transactions from SMS and email sources.
               </p>
             </div>
+            {selectedTransactionId ? (
+              <TransactionDetail
+                transactionId={selectedTransactionId}
+                onBack={() => setSelectedTransactionId(null)}
+              />
+            ) : (
+              <TransactionList
+                onSelectTransaction={(id) => setSelectedTransactionId(id)}
+              />
+            )}
+          </div>
+        )}
+
+        {activeTab === 'vendors' && (
+          <div className="max-w-3xl">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold">Vendors</h2>
+              <p className="text-muted-foreground">
+                View merchants and assign categories for automatic categorization.
+              </p>
+            </div>
+            <VendorList />
+          </div>
+        )}
+
+        {activeTab === 'categories' && (
+          <div className="max-w-2xl">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold">Categories</h2>
+              <p className="text-muted-foreground">
+                Manage transaction categories for organizing your spending.
+              </p>
+            </div>
+            <CategoriesManager />
           </div>
         )}
 
@@ -117,6 +198,24 @@ function App() {
       </main>
     </div>
   )
+}
+
+function App() {
+  const { isAuthenticated, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />
+  }
+
+  return <AuthenticatedApp />
 }
 
 export default App

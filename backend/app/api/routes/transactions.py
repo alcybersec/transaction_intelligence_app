@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
+from app.api.deps import get_current_user
 from app.core.encryption import decrypt_body
 from app.db.models import (
     Category,
@@ -17,6 +18,7 @@ from app.db.models import (
     TransactionEvidence,
     TransactionGroup,
     TransactionStatus,
+    User,
     Vendor,
 )
 from app.db.session import get_db
@@ -70,6 +72,7 @@ def _build_transaction_response(
 @router.get("", response_model=TransactionGroupListResponse)
 async def list_transactions(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     wallet_id: UUID | None = Query(None),
     vendor_id: UUID | None = Query(None),
     category_id: UUID | None = Query(None),
@@ -174,6 +177,7 @@ async def get_transaction(
     transaction_id: UUID,
     include_body: bool = Query(False, description="Include decrypted message bodies"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> TransactionDetailResponse:
     """
     Get transaction details including evidence.
@@ -249,6 +253,7 @@ async def update_transaction_notes(
     transaction_id: UUID,
     payload: TransactionNotesUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> TransactionGroupResponse:
     """
     Update transaction notes.
@@ -275,6 +280,7 @@ async def update_transaction_notes(
 @router.get("/review/queue", response_model=ReviewQueueResponse)
 async def get_review_queue(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     status: str | None = Query(None, description="Filter by parse_status"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
@@ -341,6 +347,7 @@ async def manual_parse_message(
     message_id: UUID,
     payload: ManualParseRequest | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> ManualParseResponse:
     """
     Manually trigger parsing for a message.
@@ -425,6 +432,7 @@ async def manual_parse_message(
 @router.post("/process-pending")
 async def process_pending_messages(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     limit: int = Query(100, ge=1, le=1000),
 ) -> dict:
     """

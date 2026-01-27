@@ -5,6 +5,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
+from app.db.models import User
 from app.db.session import get_db
 from app.schemas.wallet import (
     DashboardSummaryResponse,
@@ -80,6 +82,7 @@ def _build_wallet_response(wallet, transaction_count: int = 0) -> WalletResponse
 @router.get("/institutions", response_model=InstitutionListResponse)
 async def list_institutions(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     active_only: bool = Query(True, description="Only return active institutions"),
 ) -> InstitutionListResponse:
     """List all available institutions (banks)."""
@@ -108,6 +111,7 @@ async def list_institutions(
 @router.get("/instruments", response_model=InstrumentListResponse)
 async def list_instruments(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     institution_id: UUID | None = Query(None, description="Filter by institution"),
     active_only: bool = Query(True, description="Only return active instruments"),
     unassigned_only: bool = Query(False, description="Only return instruments not in any wallet"),
@@ -139,6 +143,7 @@ async def list_instruments(
 async def create_instrument(
     payload: InstrumentCreateRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> InstrumentResponse:
     """
     Create a new instrument (card or account).
@@ -178,6 +183,7 @@ async def create_instrument(
 async def get_instrument(
     instrument_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> InstrumentResponse:
     """Get an instrument by ID."""
     service = WalletService(db)
@@ -195,6 +201,7 @@ async def update_instrument(
     instrument_id: UUID,
     payload: InstrumentUpdateRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> InstrumentResponse:
     """Update an instrument."""
     service = WalletService(db)
@@ -218,6 +225,7 @@ async def update_instrument(
 async def delete_instrument(
     instrument_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """
     Delete an instrument.
@@ -236,6 +244,7 @@ async def delete_instrument(
 @router.get("", response_model=WalletListResponse)
 async def list_wallets(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> WalletListResponse:
     """List all wallets with their instruments."""
     service = WalletService(db)
@@ -256,6 +265,7 @@ async def list_wallets(
 async def create_wallet(
     payload: WalletCreateRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> WalletResponse:
     """
     Create a new wallet.
@@ -286,6 +296,7 @@ async def create_wallet(
 async def get_wallet(
     wallet_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> WalletResponse:
     """Get a wallet by ID including its instruments."""
     service = WalletService(db)
@@ -303,6 +314,7 @@ async def update_wallet(
     wallet_id: UUID,
     payload: WalletUpdateRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> WalletResponse:
     """Update a wallet's name or currency."""
     service = WalletService(db)
@@ -325,6 +337,7 @@ async def update_wallet(
 async def delete_wallet(
     wallet_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> None:
     """
     Delete a wallet.
@@ -345,6 +358,7 @@ async def attach_instruments(
     wallet_id: UUID,
     payload: WalletInstrumentAttachRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> WalletResponse:
     """Attach instruments to a wallet."""
     service = WalletService(db)
@@ -372,6 +386,7 @@ async def detach_instruments(
     wallet_id: UUID,
     payload: WalletInstrumentDetachRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> WalletResponse:
     """Detach instruments from a wallet."""
     service = WalletService(db)
@@ -395,6 +410,7 @@ async def detach_instruments(
 async def recalculate_wallet_balance(
     wallet_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> WalletBalanceUpdateResponse:
     """
     Recalculate wallet balance from the most recent transaction.
@@ -427,6 +443,7 @@ async def recalculate_wallet_balance(
 async def get_wallet_summary(
     wallet_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     days: int = Query(30, ge=1, le=365, description="Days for recent stats"),
 ) -> WalletSummaryResponse:
     """Get wallet summary for dashboard display."""
@@ -442,6 +459,7 @@ async def get_wallet_summary(
 @router.get("/dashboard/summary", response_model=DashboardSummaryResponse)
 async def get_dashboard_summary(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> DashboardSummaryResponse:
     """Get overall dashboard summary across all wallets."""
     service = WalletService(db)
