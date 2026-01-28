@@ -60,7 +60,7 @@ export interface TestPatternResponse {
  * Get authentication headers.
  */
 function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem('access_token')
+  const token = localStorage.getItem('txn_access_token')
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
