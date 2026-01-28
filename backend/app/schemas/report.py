@@ -12,12 +12,17 @@ class ReportGenerateRequest(BaseModel):
     wallet_id: UUID | None = Field(None, description="Wallet scope (null for all wallets)")
     period_start: date = Field(..., description="Report period start date")
     period_end: date = Field(..., description="Report period end date")
+    include_ai_insights: bool = Field(
+        default=False,
+        description="Include AI-generated insights in the report",
+    )
 
     model_config = {
         "json_schema_extra": {
             "example": {
                 "period_start": "2024-01-01",
                 "period_end": "2024-01-31",
+                "include_ai_insights": True,
             }
         }
     }

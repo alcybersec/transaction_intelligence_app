@@ -36,9 +36,13 @@ async def generate_report(
     Generate a new financial report for a period.
 
     Creates both markdown and PDF versions of the report.
+    Optionally includes AI-generated insights if include_ai_insights is True.
     """
     service = ReportService(db)
-    report = service.generate_report(request)
+    report = service.generate_report(
+        request,
+        include_ai_insights=request.include_ai_insights,
+    )
 
     return ReportResponse(
         id=report.id,

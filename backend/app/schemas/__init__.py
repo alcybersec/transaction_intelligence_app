@@ -1,5 +1,23 @@
 """Pydantic schemas package."""
 
+from app.schemas.ai import (
+    AcceptSuggestionRequest,
+    AISettingsResponse,
+    BatchSuggestRequest,
+    BatchSuggestResponse,
+    CategorySuggestionListResponse,
+    CategorySuggestionResponse,
+    ChatRequest,
+    ChatResponse,
+    OllamaStatusResponse,
+    ParseModeResponse,
+    ParseModeUpdateRequest,
+    RejectSuggestionRequest,
+    ReparseRequest,
+    ReparseResponse,
+    SuggestCategoryRequest,
+    SuggestionActionResponse,
+)
 from app.schemas.analytics import (
     CategoryBreakdownResponse,
     CategorySpending,
@@ -74,6 +92,23 @@ from app.schemas.wallet import (
 )
 
 __all__ = [
+    # AI
+    "OllamaStatusResponse",
+    "CategorySuggestionResponse",
+    "CategorySuggestionListResponse",
+    "SuggestCategoryRequest",
+    "AcceptSuggestionRequest",
+    "RejectSuggestionRequest",
+    "SuggestionActionResponse",
+    "ChatRequest",
+    "ChatResponse",
+    "ParseModeUpdateRequest",
+    "ParseModeResponse",
+    "ReparseRequest",
+    "ReparseResponse",
+    "BatchSuggestRequest",
+    "BatchSuggestResponse",
+    "AISettingsResponse",
     # Auth
     "LoginRequest",
     "TokenResponse",

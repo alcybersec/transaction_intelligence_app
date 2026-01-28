@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   FileSpreadsheet,
+  Sparkles,
 } from 'lucide-react'
 import {
   fetchReports,
@@ -200,7 +201,7 @@ export function Reports() {
 }
 
 interface GenerateReportFormProps {
-  onSubmit: (data: { period_start: string; period_end: string }) => void
+  onSubmit: (data: { period_start: string; period_end: string; include_ai_insights: boolean }) => void
   onCancel: () => void
   isLoading: boolean
   error?: string
@@ -214,6 +215,7 @@ function GenerateReportForm({ onSubmit, onCancel, isLoading, error }: GenerateRe
   })
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [includeAI, setIncludeAI] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -230,7 +232,7 @@ function GenerateReportForm({ onSubmit, onCancel, isLoading, error }: GenerateRe
       period_end = endDate
     }
 
-    onSubmit({ period_start, period_end })
+    onSubmit({ period_start, period_end, include_ai_insights: includeAI })
   }
 
   return (
@@ -295,6 +297,18 @@ function GenerateReportForm({ onSubmit, onCancel, isLoading, error }: GenerateRe
             </div>
           </div>
         )}
+
+        {/* AI Insights Option */}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={includeAI}
+            onChange={(e) => setIncludeAI(e.target.checked)}
+            className="rounded border-input"
+          />
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span>Include AI-generated insights</span>
+        </label>
 
         {/* Actions */}
         <div className="flex items-center gap-2">

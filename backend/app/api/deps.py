@@ -7,8 +7,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.db.models import User
-from app.db.session import get_db
+from app.db.session import get_db  # noqa: F401 - re-exported
 from app.services.auth import decode_token
+
+__all__ = ["get_db", "get_current_user", "get_current_user_optional", "get_admin_user"]
 
 # HTTP Bearer token security scheme
 bearer_scheme = HTTPBearer(auto_error=False)

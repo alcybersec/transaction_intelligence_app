@@ -1,6 +1,7 @@
 """Report service for generating monthly financial reports."""
 
 import io
+import logging
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -26,6 +27,8 @@ from app.schemas.report import (
 )
 from app.services.analytics import AnalyticsService
 
+logger = logging.getLogger(__name__)
+
 
 class ReportService:
     """Service for report generation and management."""
@@ -38,6 +41,7 @@ class ReportService:
         self,
         request: ReportGenerateRequest,
         generated_by: ReportGeneratedBy = ReportGeneratedBy.MANUAL,
+        include_ai_insights: bool = False,
     ) -> Report:
         """
         Generate a new financial report.
@@ -45,15 +49,28 @@ class ReportService:
         Args:
             request: Report generation request
             generated_by: How the report was triggered
+            include_ai_insights: Whether to include AI-generated insights
 
         Returns:
             Generated report
         """
+        # Get AI insights if requested
+        ai_insights = None
+        ai_model = None
+
+        if include_ai_insights:
+            ai_insights, ai_model = self._generate_ai_insights(
+                request.wallet_id,
+                request.period_start,
+                request.period_end,
+            )
+
         # Generate markdown content
         markdown_content = self._generate_markdown(
             request.wallet_id,
             request.period_start,
             request.period_end,
+            ai_insights=ai_insights,
         )
 
         # Generate PDF
@@ -67,6 +84,7 @@ class ReportService:
             report_markdown=markdown_content,
             report_pdf_blob=pdf_blob,
             generated_by=generated_by,
+            ai_model=ai_model,
         )
         self.db.add(report)
         self.db.commit()
@@ -133,11 +151,99 @@ class ReportService:
         self.db.commit()
         return True
 
+    def _generate_ai_insights(
+        self,
+        wallet_id: UUID | None,
+        period_start: date,
+        period_end: date,
+    ) -> tuple[dict | None, str | None]:
+        """
+        Generate AI insights for the report.
+
+        Returns:
+            Tuple of (insights dict, model name) or (None, None) if unavailable
+        """
+        from app.services.ollama import OllamaError, get_ollama_service
+
+        ollama = get_ollama_service()
+
+        if not ollama.is_configured:
+            logger.info("Ollama not configured, skipping AI insights")
+            return None, None
+
+        try:
+            # Get analytics data for AI
+            analytics = self.analytics.get_dashboard_analytics(
+                wallet_id=wallet_id,
+                period_start=period_start,
+                period_end=period_end,
+            )
+
+            category_breakdown = self.analytics.get_category_breakdown(
+                period_start=period_start,
+                period_end=period_end,
+                wallet_id=wallet_id,
+            )
+
+            top_vendors = self.analytics.get_top_vendors(
+                period_start=period_start,
+                period_end=period_end,
+                wallet_id=wallet_id,
+                limit=10,
+            )
+
+            # Prepare data for AI
+            analytics_data = {
+                "total_spending": float(analytics.total_spending),
+                "total_income": float(analytics.total_income),
+                "net_change": float(analytics.net_change),
+                "transaction_count": analytics.transaction_count,
+                "currency": analytics.currency,
+                "categories": [
+                    {
+                        "name": c.category_name,
+                        "amount": float(c.total_amount),
+                        "percentage": c.percentage,
+                        "count": c.transaction_count,
+                    }
+                    for c in category_breakdown.categories[:10]
+                ],
+                "top_vendors": [
+                    {
+                        "name": v.vendor_name,
+                        "amount": float(v.total_amount),
+                        "count": v.transaction_count,
+                    }
+                    for v in top_vendors.vendors[:5]
+                ],
+            }
+
+            if analytics.monthly_comparison:
+                analytics_data["monthly_comparison"] = {
+                    "current": float(analytics.monthly_comparison.current_month_spending),
+                    "previous": float(analytics.monthly_comparison.previous_month_spending),
+                    "change_amount": float(analytics.monthly_comparison.change_amount),
+                    "change_percentage": analytics.monthly_comparison.change_percentage,
+                }
+
+            period_desc = f"{period_start.strftime('%B %d, %Y')} to {period_end.strftime('%B %d, %Y')}"
+
+            insights = ollama.generate_report_insights(analytics_data, period_desc)
+            return insights, ollama.model
+
+        except OllamaError as e:
+            logger.warning(f"Failed to generate AI insights: {e}")
+            return None, None
+        except Exception as e:
+            logger.exception(f"Error generating AI insights: {e}")
+            return None, None
+
     def _generate_markdown(
         self,
         wallet_id: UUID | None,
         period_start: date,
         period_end: date,
+        ai_insights: dict | None = None,
     ) -> str:
         """Generate markdown content for a report."""
         # Get analytics data
@@ -236,9 +342,44 @@ class ReportService:
             lines.append("No vendor transactions in this period.")
         lines.append("")
 
+        # AI Insights section (if available)
+        if ai_insights:
+            lines.append("## AI Insights")
+            lines.append("")
+
+            # Executive summary
+            if ai_insights.get("summary"):
+                lines.append(f"**Summary:** {ai_insights['summary']}")
+                lines.append("")
+
+            # Key insights
+            if ai_insights.get("insights"):
+                lines.append("### Key Observations")
+                lines.append("")
+                for insight in ai_insights["insights"]:
+                    lines.append(f"- {insight}")
+                lines.append("")
+
+            # Notable changes
+            if ai_insights.get("notable_changes"):
+                lines.append("### Notable Changes")
+                lines.append("")
+                for change in ai_insights["notable_changes"]:
+                    lines.append(f"- {change}")
+                lines.append("")
+
+            # Recommendations
+            if ai_insights.get("recommendations"):
+                lines.append("### Recommendations")
+                lines.append("")
+                for rec in ai_insights["recommendations"]:
+                    lines.append(f"- {rec}")
+                lines.append("")
+
         # Footer
         lines.append("---")
-        lines.append("*Report generated by Transaction Intelligence App*")
+        ai_note = " with AI insights" if ai_insights else ""
+        lines.append(f"*Report generated by Transaction Intelligence App{ai_note}*")
 
         return "\n".join(lines)
 

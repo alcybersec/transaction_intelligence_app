@@ -35,6 +35,7 @@ export interface GenerateReportRequest {
   wallet_id?: string
   period_start: string
   period_end: string
+  include_ai_insights?: boolean
 }
 
 export interface ExportFilters {

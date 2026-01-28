@@ -9,6 +9,7 @@ import {
   Receipt,
   PiggyBank,
   FileText,
+  MessageSquare,
 } from 'lucide-react'
 import { useAuth } from './contexts/AuthContext'
 import { LoginPage } from './components/LoginPage'
@@ -20,6 +21,8 @@ import { VendorList } from './components/VendorList'
 import { Dashboard } from './components/Dashboard'
 import { BudgetsManager } from './components/BudgetsManager'
 import { Reports } from './components/Reports'
+import { Chat } from './components/Chat'
+import { AISettings } from './components/AISettings'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -29,7 +32,7 @@ interface HealthResponse {
   version: string
 }
 
-type Tab = 'dashboard' | 'transactions' | 'vendors' | 'categories' | 'budgets' | 'reports' | 'settings'
+type Tab = 'dashboard' | 'transactions' | 'vendors' | 'categories' | 'budgets' | 'reports' | 'chat' | 'settings'
 
 function AuthenticatedApp() {
   const { user, logout } = useAuth()
@@ -139,6 +142,17 @@ function AuthenticatedApp() {
               Reports
             </button>
             <button
+              onClick={() => setActiveTab('chat')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'chat'
+                  ? 'border-primary text-primary bg-muted/50'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
+              }`}
+            >
+              <MessageSquare className="h-4 w-4" />
+              AI Chat
+            </button>
+            <button
               onClick={() => setActiveTab('vendors')}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'vendors'
@@ -227,6 +241,18 @@ function AuthenticatedApp() {
           </div>
         )}
 
+        {activeTab === 'chat' && (
+          <div className="max-w-3xl">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold">AI Assistant</h2>
+              <p className="text-muted-foreground">
+                Ask questions about your spending patterns and get AI-powered insights.
+              </p>
+            </div>
+            <Chat />
+          </div>
+        )}
+
         {activeTab === 'vendors' && (
           <div className="max-w-3xl">
             <div className="mb-6">
@@ -252,14 +278,25 @@ function AuthenticatedApp() {
         )}
 
         {activeTab === 'settings' && (
-          <div className="max-w-3xl">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold">Wallet Settings</h2>
-              <p className="text-muted-foreground">
-                Configure your bank cards and accounts, then group them into wallets for combined balance tracking.
-              </p>
+          <div className="max-w-3xl space-y-8">
+            <div>
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold">Wallet Settings</h2>
+                <p className="text-muted-foreground">
+                  Configure your bank cards and accounts, then group them into wallets for combined balance tracking.
+                </p>
+              </div>
+              <WalletSettings />
             </div>
-            <WalletSettings />
+            <div>
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold">AI Settings</h2>
+                <p className="text-muted-foreground">
+                  Configure AI-powered features including parsing, categorization, and chat.
+                </p>
+              </div>
+              <AISettings />
+            </div>
           </div>
         )}
       </main>

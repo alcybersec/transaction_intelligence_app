@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter
 
+from app.api.routes.ai import router as ai_router
 from app.api.routes.analytics import router as analytics_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.budgets import router as budgets_router
@@ -25,3 +26,4 @@ router.include_router(vendors_router, prefix="/vendors", tags=["vendors"])
 router.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
 router.include_router(budgets_router, prefix="/budgets", tags=["budgets"])
 router.include_router(reports_router, prefix="/reports", tags=["reports"])
+router.include_router(ai_router, prefix="/ai", tags=["ai"])

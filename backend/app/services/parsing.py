@@ -1,6 +1,7 @@
 """Parsing service for extracting transaction data from messages."""
 
 import json
+import logging
 import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -10,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Institution, Message, ParseMode, ParseStatus
 from app.schemas.transaction import ParsedTransaction
+
+logger = logging.getLogger(__name__)
 
 
 class ParserProtocol(Protocol):
@@ -515,8 +518,9 @@ class ParsingService:
             result, error = self._parse_regex(message.sender, body, message.observed_at)
             if result:
                 return result, None
-            # Would call Ollama here, but for now return regex error
-            return None, error or "Regex parsing failed and Ollama not configured"
+            # Fall back to Ollama
+            logger.info(f"Regex parsing failed, falling back to Ollama for message {message.id}")
+            return self._parse_ollama(message.sender, body, message.observed_at)
 
         return None, f"Unknown parse mode: {mode}"
 
@@ -539,8 +543,81 @@ class ParsingService:
         self, sender: str, body: str, observed_at: datetime
     ) -> tuple[ParsedTransaction | None, str | None]:
         """Parse using Ollama AI."""
-        # This would be implemented when AI features are added
-        return None, "Ollama parsing not yet implemented"
+        from app.services.ollama import OllamaError, get_ollama_service
+
+        ollama = get_ollama_service()
+
+        if not ollama.is_configured:
+            return None, "Ollama is not configured (OLLAMA_BASE_URL not set)"
+
+        try:
+            # Call Ollama to parse the transaction
+            result = ollama.parse_transaction(
+                sender=sender,
+                body=body,
+                observed_at_str=observed_at.isoformat(),
+            )
+
+            # Validate required fields
+            if "amount" not in result or "direction" not in result:
+                return None, "AI parsing returned incomplete data: missing amount or direction"
+
+            # Convert to ParsedTransaction
+            try:
+                amount = Decimal(str(result["amount"]))
+            except (InvalidOperation, ValueError) as e:
+                return None, f"Invalid amount from AI parsing: {e}"
+
+            # Parse occurred_at if provided
+            occurred_at_parsed = observed_at
+            if result.get("occurred_at"):
+                try:
+                    # Try parsing ISO format
+                    occurred_at_parsed = datetime.fromisoformat(
+                        result["occurred_at"].replace("Z", "+00:00")
+                    )
+                except (ValueError, AttributeError):
+                    # Keep observed_at as fallback
+                    pass
+
+            # Parse available_balance if provided
+            available_balance = None
+            if result.get("available_balance") is not None:
+                try:
+                    available_balance = Decimal(str(result["available_balance"]))
+                except (InvalidOperation, ValueError):
+                    pass
+
+            parsed = ParsedTransaction(
+                amount=amount,
+                currency=result.get("currency", "AED"),
+                direction=result["direction"],
+                occurred_at=occurred_at_parsed,
+                vendor_raw=result.get("vendor_raw"),
+                card_last4=result.get("card_last4"),
+                account_tail=result.get("account_tail"),
+                available_balance=available_balance,
+                reference_id=result.get("reference_id"),
+                institution_name=self._detect_institution_name(sender),
+                parse_confidence=0.8,  # AI parsing confidence
+            )
+
+            return parsed, None
+
+        except OllamaError as e:
+            logger.warning(f"Ollama parsing failed: {e}")
+            return None, f"Ollama parsing error: {str(e)}"
+        except Exception as e:
+            logger.exception(f"Unexpected error in Ollama parsing: {e}")
+            return None, f"Unexpected parsing error: {str(e)}"
+
+    def _detect_institution_name(self, sender: str) -> str | None:
+        """Detect institution name from sender."""
+        sender_upper = sender.upper()
+        if "MASHREQ" in sender_upper:
+            return "mashreq"
+        # Add more institutions as needed
+        return None
 
     def process_pending_messages(self, limit: int = 100) -> dict:
         """
