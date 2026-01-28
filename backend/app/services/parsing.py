@@ -28,9 +28,11 @@ class MashreqCardPurchaseParser:
     """
     Parser for Mashreq card purchase SMS.
 
-    Example format:
-    "Your Mashreq Card ending 1234 was used for AED 50.00 at CARREFOUR on 15-Jan-2024 14:30.
-    Avl Cr Limit: AED 10,000.00"
+    Example formats:
+    1. "Your Mashreq Card ending 1234 was used for AED 50.00 at CARREFOUR on 15-Jan-2024 14:30.
+        Avl Cr Limit: AED 10,000.00"
+    2. "Thank you for using NEO VISA Debit Card Card ending 5300 for AED 107.50 at SPINNEYS
+        on 26-JAN-2026 07:07 PM. Available Balance is AED 2,861.93"
     """
 
     # Patterns for Mashreq card purchase SMS
@@ -56,9 +58,20 @@ class MashreqCardPurchaseParser:
         re.IGNORECASE,
     )
 
-    # Pattern for available limit
+    # NEO VISA Debit Card pattern (newer format)
+    # "Thank you for using NEO VISA Debit Card Card ending 5300 for AED 107.50 at SPINNEYS on 26-JAN-2026 07:07 PM"
+    NEO_CARD_PATTERN = re.compile(
+        r"(?:Thank\s+you\s+for\s+using\s+)?"
+        r"(?:NEO\s+)?(?:VISA\s+)?(?:Debit\s+)?Card\s+Card\s+ending\s+(\d{4})\s+"
+        r"for\s+([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
+        r"at\s+(.+?)\s+"
+        r"on\s+(\d{1,2}[-/][A-Za-z]{3}[-/]\d{2,4})\s+(\d{1,2}:\d{2}(?:\s*[AP]M)?)",
+        re.IGNORECASE,
+    )
+
+    # Pattern for available limit/balance
     LIMIT_PATTERN = re.compile(
-        r"(?:Avl\.?\s*(?:Cr\.?\s*)?Limit|Available\s+(?:Credit\s+)?Limit):\s*"
+        r"(?:Avl\.?\s*(?:Cr\.?\s*)?Limit|Available\s+(?:Credit\s+)?Limit|Available\s+Balance(?:\s+is)?)[:\s]*"
         r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
         re.IGNORECASE,
     )
@@ -84,20 +97,30 @@ class MashreqCardPurchaseParser:
 
     def parse(self, sender: str, body: str, observed_at: datetime) -> ParsedTransaction | None:
         """Parse Mashreq card purchase message."""
-        # Try main pattern
-        match = self.CARD_PURCHASE_PATTERN.search(body)
-        if not match:
-            match = self.CARD_PURCHASE_ALT_PATTERN.search(body)
+        # Try NEO card pattern first (newer format)
+        match = self.NEO_CARD_PATTERN.search(body)
+        if match:
+            card_last4 = match.group(1)
+            currency = match.group(2).upper()
+            amount_str = match.group(3).replace(",", "")
+            vendor_raw = match.group(4).strip()
+            date_str = match.group(5)
+            time_str = match.group(6)
+        else:
+            # Try main pattern
+            match = self.CARD_PURCHASE_PATTERN.search(body)
+            if not match:
+                match = self.CARD_PURCHASE_ALT_PATTERN.search(body)
 
-        if not match:
-            return None
+            if not match:
+                return None
 
-        card_last4 = match.group(1)
-        currency = match.group(2).upper()
-        amount_str = match.group(3).replace(",", "")
-        vendor_raw = match.group(4).strip()
-        date_str = match.group(5)
-        time_str = match.group(6) if len(match.groups()) > 5 else None
+            card_last4 = match.group(1)
+            currency = match.group(2).upper()
+            amount_str = match.group(3).replace(",", "")
+            vendor_raw = match.group(4).strip()
+            date_str = match.group(5)
+            time_str = match.group(6) if len(match.groups()) > 5 else None
 
         # Parse amount
         try:
@@ -178,9 +201,11 @@ class MashreqAccountCreditParser:
     """
     Parser for Mashreq account credit/deposit SMS.
 
-    Example format:
-    "AED 5,000.00 has been credited to your AC No. ending 1234 on 15-Jan-2024.
-    Avl Bal: AED 15,000.00"
+    Example formats:
+    1. "AED 5,000.00 has been credited to your AC No. ending 1234 on 15-Jan-2024.
+        Avl Bal: AED 15,000.00"
+    2. "Your AC No:XXXXXXXX8621 is credited with AED 8979.00 for Aani Instant Payments
+        (Local IPP Transfer). Login to Online Banking for details."
     """
 
     SENDER_PATTERNS = ["MASHREQ", "MASHREQBANK", "MASHREQ BANK"]
@@ -191,6 +216,16 @@ class MashreqAccountCreditParser:
         r"(?:has\s+been\s+)?credited\s+"
         r"(?:to\s+)?(?:your\s+)?(?:AC\.?\s*(?:No\.?)?\s*)?(?:ending\s+)?(\d{3,})\s+"
         r"(?:on\s+)?(\d{1,2}[-/][A-Za-z]{3}[-/]\d{2,4})",
+        re.IGNORECASE,
+    )
+
+    # Aani/IPP credit pattern (newer format)
+    # "Your AC No:XXXXXXXX8621 is credited with AED 8979.00 for Aani Instant Payments..."
+    AANI_CREDIT_PATTERN = re.compile(
+        r"(?:Your\s+)?AC\s*No[:\s]*[X]+(\d{4})\s+"
+        r"is\s+credited\s+with\s+"
+        r"([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
+        r"for\s+(.+?)(?:\.\s*Login|$)",
         re.IGNORECASE,
     )
 
@@ -229,6 +264,32 @@ class MashreqAccountCreditParser:
 
     def parse(self, sender: str, body: str, observed_at: datetime) -> ParsedTransaction | None:
         """Parse Mashreq credit message."""
+        # Try Aani/IPP pattern first (newer format)
+        match = self.AANI_CREDIT_PATTERN.search(body)
+        if match:
+            account_tail = match.group(1)
+            currency = match.group(2).upper()
+            amount_str = match.group(3).replace(",", "")
+            vendor_raw = match.group(4).strip()
+            date_str = None
+
+            # Parse amount
+            try:
+                amount = Decimal(amount_str)
+            except InvalidOperation:
+                return None
+
+            return ParsedTransaction(
+                amount=amount,
+                currency=currency,
+                direction="credit",
+                occurred_at=observed_at,
+                vendor_raw=vendor_raw,
+                account_tail=account_tail,
+                available_balance=None,
+                institution_name="mashreq",
+            )
+
         # Try main pattern
         match = self.CREDIT_PATTERN.search(body)
 
