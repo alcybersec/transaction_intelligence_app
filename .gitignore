@@ -70,3 +70,6 @@ secrets/
 
 # Documents (keep planning docs out of repo)
 *.pdf
+
+# Backups (contain sensitive data)
+backups/

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router
+from app.core.middleware import PrometheusMiddleware
 
 app = FastAPI(
     title="Transaction Intelligence API",
@@ -24,6 +25,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Prometheus metrics middleware
+app.add_middleware(PrometheusMiddleware)
 
 # Include API routes
 app.include_router(router)

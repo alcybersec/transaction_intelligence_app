@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.routes.adapters import router as adapters_router
+from app.api.routes.admin import router as admin_router
 from app.api.routes.ai import router as ai_router
 from app.api.routes.analytics import router as analytics_router
 from app.api.routes.auth import router as auth_router
@@ -29,3 +30,4 @@ router.include_router(budgets_router, prefix="/budgets", tags=["budgets"])
 router.include_router(reports_router, prefix="/reports", tags=["reports"])
 router.include_router(ai_router, prefix="/ai", tags=["ai"])
 router.include_router(adapters_router, prefix="/adapters", tags=["adapters"])
+router.include_router(admin_router, prefix="/admin", tags=["admin"])

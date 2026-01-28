@@ -31,6 +31,9 @@ python-multipart==0.0.12
 python-dotenv==1.0.1
 structlog==24.4.0
 
+# Monitoring
+prometheus-client==0.21.0
+
 # Reports & Exports
 markdown==3.7
 weasyprint==62.3

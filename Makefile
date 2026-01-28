@@ -1,4 +1,4 @@
-.PHONY: up down logs db-migrate test lint build clean help
+.PHONY: up down logs db-migrate test lint build clean help backup restore backup-list monitoring monitoring-down
 
 # Default target
 help:
@@ -12,6 +12,15 @@ help:
 	@echo "  make test        - Run all tests"
 	@echo "  make lint        - Run linters"
 	@echo "  make clean       - Remove containers and volumes"
+	@echo ""
+	@echo "Backup & Restore:"
+	@echo "  make backup      - Create database backup"
+	@echo "  make backup-list - List available backups"
+	@echo "  make restore FILE=<path> - Restore from backup file"
+	@echo ""
+	@echo "Monitoring (optional):"
+	@echo "  make monitoring      - Start Prometheus + Grafana"
+	@echo "  make monitoring-down - Stop monitoring services"
 	@echo ""
 
 # Start all services
@@ -85,3 +94,54 @@ shell-worker:
 
 shell-db:
 	docker compose exec postgres psql -U txnuser -d txndb
+
+# Backup & Restore
+backup:
+	@chmod +x scripts/backup.sh
+	@./scripts/backup.sh
+
+backup-list:
+	@chmod +x scripts/backup-list.sh
+	@./scripts/backup-list.sh
+
+restore:
+ifndef FILE
+	@echo "Usage: make restore FILE=./backups/daily/txn_backup_YYYYMMDD_HHMMSS.sql.gz"
+	@exit 1
+endif
+	@chmod +x scripts/restore.sh
+	@./scripts/restore.sh $(FILE)
+
+# Verify backup can be restored (creates temp DB, restores, checks, destroys)
+backup-verify:
+ifndef FILE
+	@echo "Usage: make backup-verify FILE=./backups/daily/txn_backup_YYYYMMDD_HHMMSS.sql.gz"
+	@exit 1
+endif
+	@echo "Creating temporary verification database..."
+	@docker compose exec postgres psql -U txnuser -d postgres -c "DROP DATABASE IF EXISTS txndb_verify;"
+	@docker compose exec postgres psql -U txnuser -d postgres -c "CREATE DATABASE txndb_verify;"
+	@echo "Restoring backup to verification database..."
+	@if echo "$(FILE)" | grep -q ".gz$$"; then \
+		gunzip -c $(FILE) | docker compose exec -T postgres psql -U txnuser -d txndb_verify --quiet; \
+	else \
+		docker compose exec -T postgres psql -U txnuser -d txndb_verify --quiet < $(FILE); \
+	fi
+	@echo "Checking table counts..."
+	@docker compose exec postgres psql -U txnuser -d txndb_verify -c "SELECT tablename, (xpath('/row/cnt/text()', query_to_xml('SELECT COUNT(*) AS cnt FROM ' || tablename, false, false, '')))[1]::text::int AS row_count FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;"
+	@docker compose exec postgres psql -U txnuser -d postgres -c "DROP DATABASE txndb_verify;"
+	@echo "Backup verification completed successfully!"
+
+# Monitoring (Prometheus + Grafana)
+monitoring:
+	docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d prometheus grafana
+	@echo "Monitoring started. Prometheus: http://localhost:9090 | Grafana: http://localhost:3000"
+
+monitoring-down:
+	docker compose -f docker-compose.yml -f docker-compose.monitoring.yml down prometheus grafana
+	@echo "Monitoring services stopped"
+
+# Start all services including monitoring
+up-full:
+	docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+	@echo "All services started including monitoring"

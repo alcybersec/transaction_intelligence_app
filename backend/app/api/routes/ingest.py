@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.routes.health import increment_metric
 from app.core.encryption import encrypt_body, hash_body
 from app.core.security import HMACVerificationError, verify_hmac_signature
+from app.core.metrics import messages_ingested_total
 from app.db.models.message import Message, MessageSource, ParseStatus
 from app.db.session import get_db
 from app.schemas.ingest import (
@@ -52,6 +53,7 @@ def _create_message(db: Session, request: SMSIngestRequest) -> tuple[Message, bo
     existing = _check_duplicate(db, MessageSource.SMS, source_uid)
     if existing:
         increment_metric("messages_deduped")
+        messages_ingested_total.labels(source="sms", status="duplicate").inc()
         return existing, True
 
     # Create new message
@@ -71,6 +73,7 @@ def _create_message(db: Session, request: SMSIngestRequest) -> tuple[Message, bo
     db.refresh(message)
 
     increment_metric("messages_ingested")
+    messages_ingested_total.labels(source="sms", status="accepted").inc()
     return message, False
 
 

@@ -1,17 +1,18 @@
-"""Health check endpoints with dependency status."""
+"""Health check endpoints with dependency status and Prometheus metrics."""
 
 import redis
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db.session import get_db
+from app.core import metrics as prom_metrics
 
 router = APIRouter()
 
-# Metrics counters (in-memory, for basic observability)
-# In production, consider using Prometheus or similar
+# Legacy in-memory counters (kept for backward compatibility)
+# New code should use Prometheus metrics from app.core.metrics
 _metrics = {
     "messages_ingested": 0,
     "messages_deduped": 0,
@@ -20,12 +21,12 @@ _metrics = {
 
 
 def get_metrics() -> dict:
-    """Get current metrics."""
+    """Get current metrics (legacy in-memory counters)."""
     return _metrics.copy()
 
 
 def increment_metric(name: str, value: int = 1) -> None:
-    """Increment a metric counter."""
+    """Increment a metric counter (legacy)."""
     if name in _metrics:
         _metrics[name] += value
 
@@ -94,3 +95,17 @@ async def simple_health() -> dict:
         "service": "api",
         "version": "0.1.0",
     }
+
+
+@router.get("/metrics")
+async def prometheus_metrics() -> Response:
+    """
+    Prometheus metrics endpoint.
+
+    Returns metrics in Prometheus text format for scraping.
+    Configure Prometheus to scrape this endpoint at /metrics.
+    """
+    return Response(
+        content=prom_metrics.get_metrics(),
+        media_type=prom_metrics.get_content_type(),
+    )
