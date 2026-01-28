@@ -23,6 +23,7 @@ import { BudgetsManager } from './components/BudgetsManager'
 import { Reports } from './components/Reports'
 import { Chat } from './components/Chat'
 import { AISettings } from './components/AISettings'
+import { AdaptersSettings } from './components/AdaptersSettings'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -287,6 +288,15 @@ function AuthenticatedApp() {
                 </p>
               </div>
               <WalletSettings />
+            </div>
+            <div>
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold">Bank Adapters</h2>
+                <p className="text-muted-foreground">
+                  View and configure bank adapters that parse your transaction messages.
+                </p>
+              </div>
+              <AdaptersSettings />
             </div>
             <div>
               <div className="mb-6">

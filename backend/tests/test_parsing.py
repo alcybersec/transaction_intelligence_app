@@ -5,7 +5,8 @@ from decimal import Decimal
 
 import pytest
 
-from app.services.parsing import (
+# Import from adapters module (parsers have been moved there)
+from app.adapters.mashreq.parsers import (
     MashreqAccountCreditParser,
     MashreqCardDebitParser,
     MashreqCardPurchaseParser,
@@ -32,12 +33,20 @@ class TestMashreqCardPurchaseParser:
 
         assert self.parser.can_parse(sender, body) is True
 
-    def test_cannot_parse_non_mashreq_sender(self):
-        """Test rejection of non-Mashreq messages."""
-        sender = "OTHERBANK"
-        body = "Your Card ending 1234 was used for AED 50.00 at CARREFOUR."
+    def test_parser_checks_body_keywords(self):
+        """Test parser checks body for purchase keywords.
 
-        assert self.parser.can_parse(sender, body) is False
+        Note: In the adapter architecture, sender checking is done by the
+        adapter (MashreqAdapter.can_handle_sms), not the individual parsers.
+        Parsers only check if the body matches their expected format.
+        """
+        # Body without purchase keywords should not match
+        body_without_keywords = "Your account balance is AED 5000.00"
+        assert self.parser.can_parse("MASHREQ", body_without_keywords) is False
+
+        # Body with purchase keywords should match (regardless of sender)
+        body_with_keywords = "Your Card ending 1234 was used for AED 50.00 at CARREFOUR."
+        assert self.parser.can_parse("MASHREQ", body_with_keywords) is True
 
     def test_parse_standard_purchase(self):
         """Test parsing standard card purchase SMS."""

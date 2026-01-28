@@ -2,489 +2,133 @@
 
 import json
 import logging
-import re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
-from typing import Protocol
 
 from sqlalchemy.orm import Session
 
-from app.db.models import Institution, Message, ParseMode, ParseStatus
+from app.adapters import get_adapter_registry
+from app.adapters.base import BankAdapter, ParserProtocol
+from app.db.models import Institution, Message, MessageSource, ParseMode, ParseStatus
 from app.schemas.transaction import ParsedTransaction
 
 logger = logging.getLogger(__name__)
 
 
-class ParserProtocol(Protocol):
-    """Protocol for transaction parsers."""
-
-    def can_parse(self, sender: str, body: str) -> bool:
-        """Check if this parser can handle the message."""
-        ...
-
-    def parse(self, sender: str, body: str, observed_at: datetime) -> ParsedTransaction | None:
-        """Parse the message and return extracted data."""
-        ...
-
-
-class MashreqCardPurchaseParser:
-    """
-    Parser for Mashreq card purchase SMS.
-
-    Example formats:
-    1. "Your Mashreq Card ending 1234 was used for AED 50.00 at CARREFOUR on 15-Jan-2024 14:30.
-        Avl Cr Limit: AED 10,000.00"
-    2. "Thank you for using NEO VISA Debit Card Card ending 5300 for AED 107.50 at SPINNEYS
-        on 26-JAN-2026 07:07 PM. Available Balance is AED 2,861.93"
-    """
-
-    # Patterns for Mashreq card purchase SMS
-    SENDER_PATTERNS = ["MASHREQ", "MASHREQBANK", "MASHREQ BANK"]
-
-    # Main pattern for card purchase
-    CARD_PURCHASE_PATTERN = re.compile(
-        r"(?:Your\s+)?(?:Mashreq\s+)?Card\s+ending\s+(\d{4})\s+"
-        r"(?:was\s+)?used\s+for\s+"
-        r"([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
-        r"at\s+(.+?)\s+"
-        r"on\s+(\d{1,2}[-/][A-Za-z]{3}[-/]\d{2,4})(?:\s+(\d{1,2}:\d{2}))?",
-        re.IGNORECASE,
-    )
-
-    # Alternative pattern (different word order)
-    CARD_PURCHASE_ALT_PATTERN = re.compile(
-        r"(?:Mashreq\s+)?Card\s+(?:ending\s+)?(\d{4})\s+"
-        r"(?:has\s+been\s+)?(?:used|charged)\s+"
-        r"(?:for\s+)?([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
-        r"(?:at\s+)?(.+?)\s+"
-        r"(?:on\s+)?(\d{1,2}[-/][A-Za-z]{3}[-/]\d{2,4})",
-        re.IGNORECASE,
-    )
-
-    # NEO VISA Debit Card pattern (newer format)
-    # "Thank you for using NEO VISA Debit Card Card ending 5300 for AED 107.50 at SPINNEYS on 26-JAN-2026 07:07 PM"
-    NEO_CARD_PATTERN = re.compile(
-        r"(?:Thank\s+you\s+for\s+using\s+)?"
-        r"(?:NEO\s+)?(?:VISA\s+)?(?:Debit\s+)?Card\s+Card\s+ending\s+(\d{4})\s+"
-        r"for\s+([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
-        r"at\s+(.+?)\s+"
-        r"on\s+(\d{1,2}[-/][A-Za-z]{3}[-/]\d{2,4})\s+(\d{1,2}:\d{2}(?:\s*[AP]M)?)",
-        re.IGNORECASE,
-    )
-
-    # Pattern for available limit/balance
-    LIMIT_PATTERN = re.compile(
-        r"(?:Avl\.?\s*(?:Cr\.?\s*)?Limit|Available\s+(?:Credit\s+)?Limit|Available\s+Balance(?:\s+is)?)[:\s]*"
-        r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
-        re.IGNORECASE,
-    )
-
-    # Pattern for reference/auth code
-    REF_PATTERN = re.compile(
-        r"(?:Ref\.?|Auth\.?\s*(?:Code)?|Approval\s*(?:Code)?|Txn\s*(?:Ref)?)[:\s]*([A-Z0-9]{6,})",
-        re.IGNORECASE,
-    )
-
-    def can_parse(self, sender: str, body: str) -> bool:
-        """Check if message is a Mashreq card purchase."""
-        sender_upper = sender.upper()
-        if not any(p in sender_upper for p in self.SENDER_PATTERNS):
-            return False
-
-        # Check for purchase keywords
-        body_upper = body.upper()
-        return any(
-            kw in body_upper
-            for kw in ["CARD ENDING", "WAS USED FOR", "USED FOR", "CARD"]
-        ) and any(kw in body_upper for kw in ["AED", "USD", "EUR", "GBP"])
-
-    def parse(self, sender: str, body: str, observed_at: datetime) -> ParsedTransaction | None:
-        """Parse Mashreq card purchase message."""
-        # Try NEO card pattern first (newer format)
-        match = self.NEO_CARD_PATTERN.search(body)
-        if match:
-            card_last4 = match.group(1)
-            currency = match.group(2).upper()
-            amount_str = match.group(3).replace(",", "")
-            vendor_raw = match.group(4).strip()
-            date_str = match.group(5)
-            time_str = match.group(6)
-        else:
-            # Try main pattern
-            match = self.CARD_PURCHASE_PATTERN.search(body)
-            if not match:
-                match = self.CARD_PURCHASE_ALT_PATTERN.search(body)
-
-            if not match:
-                return None
-
-            card_last4 = match.group(1)
-            currency = match.group(2).upper()
-            amount_str = match.group(3).replace(",", "")
-            vendor_raw = match.group(4).strip()
-            date_str = match.group(5)
-            time_str = match.group(6) if len(match.groups()) > 5 else None
-
-        # Parse amount
-        try:
-            amount = Decimal(amount_str)
-        except InvalidOperation:
-            return None
-
-        # Parse date
-        occurred_at = self._parse_date(date_str, time_str, observed_at)
-
-        # Extract available limit
-        available_balance = None
-        limit_match = self.LIMIT_PATTERN.search(body)
-        if limit_match:
-            try:
-                limit_str = limit_match.group(2).replace(",", "")
-                available_balance = Decimal(limit_str)
-            except (InvalidOperation, IndexError):
-                pass
-
-        # Extract reference
-        reference_id = None
-        ref_match = self.REF_PATTERN.search(body)
-        if ref_match:
-            reference_id = ref_match.group(1)
-
-        return ParsedTransaction(
-            amount=amount,
-            currency=currency,
-            direction="debit",
-            occurred_at=occurred_at,
-            vendor_raw=vendor_raw,
-            card_last4=card_last4,
-            available_balance=available_balance,
-            reference_id=reference_id,
-            institution_name="mashreq",
-        )
-
-    def _parse_date(
-        self, date_str: str, time_str: str | None, observed_at: datetime
-    ) -> datetime:
-        """Parse date/time from message."""
-        # Common date formats: 15-Jan-2024, 15/Jan/24, 15-Jan-24
-        date_formats = [
-            "%d-%b-%Y",
-            "%d/%b/%Y",
-            "%d-%b-%y",
-            "%d/%b/%y",
-        ]
-
-        for fmt in date_formats:
-            try:
-                parsed = datetime.strptime(date_str, fmt)
-
-                # Add time if available
-                if time_str:
-                    try:
-                        time_parts = time_str.split(":")
-                        parsed = parsed.replace(
-                            hour=int(time_parts[0]), minute=int(time_parts[1])
-                        )
-                    except (ValueError, IndexError):
-                        pass
-
-                # Use observed_at timezone
-                if observed_at.tzinfo:
-                    parsed = parsed.replace(tzinfo=observed_at.tzinfo)
-
-                return parsed
-            except ValueError:
-                continue
-
-        # Fall back to observed_at
-        return observed_at
-
-
-class MashreqAccountCreditParser:
-    """
-    Parser for Mashreq account credit/deposit SMS.
-
-    Example formats:
-    1. "AED 5,000.00 has been credited to your AC No. ending 1234 on 15-Jan-2024.
-        Avl Bal: AED 15,000.00"
-    2. "Your AC No:XXXXXXXX8621 is credited with AED 8979.00 for Aani Instant Payments
-        (Local IPP Transfer). Login to Online Banking for details."
-    """
-
-    SENDER_PATTERNS = ["MASHREQ", "MASHREQBANK", "MASHREQ BANK"]
-
-    # Pattern for credit/deposit
-    CREDIT_PATTERN = re.compile(
-        r"([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
-        r"(?:has\s+been\s+)?credited\s+"
-        r"(?:to\s+)?(?:your\s+)?(?:AC\.?\s*(?:No\.?)?\s*)?(?:ending\s+)?(\d{3,})\s+"
-        r"(?:on\s+)?(\d{1,2}[-/][A-Za-z]{3}[-/]\d{2,4})",
-        re.IGNORECASE,
-    )
-
-    # Aani/IPP credit pattern (newer format)
-    # "Your AC No:XXXXXXXX8621 is credited with AED 8979.00 for Aani Instant Payments..."
-    AANI_CREDIT_PATTERN = re.compile(
-        r"(?:Your\s+)?AC\s*No[:\s]*[X]+(\d{4})\s+"
-        r"is\s+credited\s+with\s+"
-        r"([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
-        r"for\s+(.+?)(?:\.\s*Login|$)",
-        re.IGNORECASE,
-    )
-
-    # Alternative pattern
-    CREDIT_ALT_PATTERN = re.compile(
-        r"(?:Amount\s+)?([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
-        r"(?:is\s+)?(?:credited|deposited)\s+"
-        r"(?:in|to)\s+(?:your\s+)?(?:account|AC)",
-        re.IGNORECASE,
-    )
-
-    # Pattern for available balance
-    BALANCE_PATTERN = re.compile(
-        r"(?:Avl\.?\s*Bal\.?|Available\s+Balance|Bal\.?)[:\s]*"
-        r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
-        re.IGNORECASE,
-    )
-
-    # Pattern for account tail
-    ACCOUNT_PATTERN = re.compile(
-        r"(?:AC\.?\s*(?:No\.?)?\s*|Account\s*(?:No\.?)?\s*)(?:ending\s+)?(\d{3,})",
-        re.IGNORECASE,
-    )
-
-    # Pattern for sender/source
-    FROM_PATTERN = re.compile(r"(?:from|by)\s+([A-Za-z0-9\s]+?)(?:\s+on|\s+Ref|$)", re.IGNORECASE)
-
-    def can_parse(self, sender: str, body: str) -> bool:
-        """Check if message is a Mashreq account credit."""
-        sender_upper = sender.upper()
-        if not any(p in sender_upper for p in self.SENDER_PATTERNS):
-            return False
-
-        body_upper = body.upper()
-        return any(kw in body_upper for kw in ["CREDITED", "DEPOSITED", "CREDIT"])
-
-    def parse(self, sender: str, body: str, observed_at: datetime) -> ParsedTransaction | None:
-        """Parse Mashreq credit message."""
-        # Try Aani/IPP pattern first (newer format)
-        match = self.AANI_CREDIT_PATTERN.search(body)
-        if match:
-            account_tail = match.group(1)
-            currency = match.group(2).upper()
-            amount_str = match.group(3).replace(",", "")
-            vendor_raw = match.group(4).strip()
-            date_str = None
-
-            # Parse amount
-            try:
-                amount = Decimal(amount_str)
-            except InvalidOperation:
-                return None
-
-            return ParsedTransaction(
-                amount=amount,
-                currency=currency,
-                direction="credit",
-                occurred_at=observed_at,
-                vendor_raw=vendor_raw,
-                account_tail=account_tail,
-                available_balance=None,
-                institution_name="mashreq",
-            )
-
-        # Try main pattern
-        match = self.CREDIT_PATTERN.search(body)
-
-        if match:
-            currency = match.group(1).upper()
-            amount_str = match.group(2).replace(",", "")
-            account_tail = match.group(3)
-            date_str = match.group(4)
-        else:
-            # Try alternative pattern
-            match = self.CREDIT_ALT_PATTERN.search(body)
-            if not match:
-                return None
-
-            currency = match.group(1).upper()
-            amount_str = match.group(2).replace(",", "")
-            account_tail = None
-            date_str = None
-
-            # Try to extract account from elsewhere
-            acc_match = self.ACCOUNT_PATTERN.search(body)
-            if acc_match:
-                account_tail = acc_match.group(1)
-
-        # Parse amount
-        try:
-            amount = Decimal(amount_str)
-        except InvalidOperation:
-            return None
-
-        # Parse date if available
-        occurred_at_parsed = observed_at
-        if date_str:
-            occurred_at_parsed = self._parse_date(date_str, observed_at)
-
-        # Extract balance
-        available_balance = None
-        bal_match = self.BALANCE_PATTERN.search(body)
-        if bal_match:
-            try:
-                bal_str = bal_match.group(2).replace(",", "")
-                available_balance = Decimal(bal_str)
-            except (InvalidOperation, IndexError):
-                pass
-
-        # Try to extract source/sender as vendor
-        vendor_raw = None
-        from_match = self.FROM_PATTERN.search(body)
-        if from_match:
-            vendor_raw = from_match.group(1).strip()
-
-        return ParsedTransaction(
-            amount=amount,
-            currency=currency,
-            direction="credit",
-            occurred_at=occurred_at_parsed,
-            vendor_raw=vendor_raw,
-            account_tail=account_tail,
-            available_balance=available_balance,
-            institution_name="mashreq",
-        )
-
-    def _parse_date(self, date_str: str, observed_at: datetime) -> datetime:
-        """Parse date from message."""
-        date_formats = ["%d-%b-%Y", "%d/%b/%Y", "%d-%b-%y", "%d/%b/%y"]
-
-        for fmt in date_formats:
-            try:
-                parsed = datetime.strptime(date_str, fmt)
-                if observed_at.tzinfo:
-                    parsed = parsed.replace(tzinfo=observed_at.tzinfo)
-                return parsed
-            except ValueError:
-                continue
-
-        return observed_at
-
-
-class MashreqCardDebitParser:
-    """
-    Parser for Mashreq card debit (ATM withdrawal, etc.) SMS.
-
-    Example format:
-    "AED 1,000.00 was debited from your Card ending 1234 on 15-Jan-2024.
-    ATM Withdrawal. Avl Bal: AED 5,000.00"
-    """
-
-    SENDER_PATTERNS = ["MASHREQ", "MASHREQBANK", "MASHREQ BANK"]
-
-    DEBIT_PATTERN = re.compile(
-        r"([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
-        r"(?:was\s+)?(?:debited|withdrawn)\s+"
-        r"(?:from\s+)?(?:your\s+)?(?:Card|Account|AC).*?"
-        r"(?:ending\s+)?(\d{4})",
-        re.IGNORECASE,
-    )
-
-    BALANCE_PATTERN = re.compile(
-        r"(?:Avl\.?\s*(?:Bal\.?|Limit)|Available\s+Balance)[:\s]*"
-        r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
-        re.IGNORECASE,
-    )
-
-    def can_parse(self, sender: str, body: str) -> bool:
-        """Check if message is a Mashreq debit."""
-        sender_upper = sender.upper()
-        if not any(p in sender_upper for p in self.SENDER_PATTERNS):
-            return False
-
-        body_upper = body.upper()
-        return any(kw in body_upper for kw in ["DEBITED", "WITHDRAWN", "DEBIT"])
-
-    def parse(self, sender: str, body: str, observed_at: datetime) -> ParsedTransaction | None:
-        """Parse Mashreq debit message."""
-        match = self.DEBIT_PATTERN.search(body)
-        if not match:
-            return None
-
-        currency = match.group(1).upper()
-        amount_str = match.group(2).replace(",", "")
-        identifier = match.group(3)
-
-        try:
-            amount = Decimal(amount_str)
-        except InvalidOperation:
-            return None
-
-        # Determine if card or account
-        card_last4 = None
-        account_tail = None
-        if len(identifier) == 4:
-            card_last4 = identifier
-        else:
-            account_tail = identifier
-
-        # Extract balance
-        available_balance = None
-        bal_match = self.BALANCE_PATTERN.search(body)
-        if bal_match:
-            try:
-                bal_str = bal_match.group(2).replace(",", "")
-                available_balance = Decimal(bal_str)
-            except (InvalidOperation, IndexError):
-                pass
-
-        # Check for ATM/transaction type as vendor
-        vendor_raw = None
-        if "ATM" in body.upper():
-            vendor_raw = "ATM WITHDRAWAL"
-
-        return ParsedTransaction(
-            amount=amount,
-            currency=currency,
-            direction="debit",
-            occurred_at=observed_at,
-            vendor_raw=vendor_raw,
-            card_last4=card_last4,
-            account_tail=account_tail,
-            available_balance=available_balance,
-            institution_name="mashreq",
-        )
+# Legacy parser imports for backwards compatibility
+# These are now in app.adapters.mashreq.parsers
+from app.adapters.mashreq.parsers import (
+    MashreqAccountCreditParser,
+    MashreqCardDebitParser,
+    MashreqCardPurchaseParser,
+)
 
 
 class ParsingService:
     """
     Main parsing service that coordinates multiple parsers.
+
+    Uses the adapter registry to dynamically discover and use bank-specific parsers.
     """
 
     def __init__(self, db: Session):
         self.db = db
-        self.parsers: list[ParserProtocol] = [
-            MashreqCardPurchaseParser(),
-            MashreqAccountCreditParser(),
-            MashreqCardDebitParser(),
-        ]
+        self._registry = get_adapter_registry()
 
-    def detect_institution(self, sender: str, body: str) -> Institution | None:
+    @property
+    def parsers(self) -> list[ParserProtocol]:
+        """
+        Get all parsers from registered adapters.
+
+        Returns:
+            List of all parser instances from all adapters
+        """
+        return self._registry.get_all_parsers()
+
+    def detect_adapter(
+        self, sender: str, body: str, source: MessageSource | str = MessageSource.SMS
+    ) -> BankAdapter | None:
+        """
+        Detect which adapter should handle this message.
+
+        Args:
+            sender: Message sender (phone number or email)
+            body: Message body
+            source: Message source (sms or email)
+
+        Returns:
+            BankAdapter if found, None otherwise
+        """
+        source_str = source.value if isinstance(source, MessageSource) else source
+
+        if source_str == "sms":
+            return self._registry.detect_institution_sms(sender, body)
+        elif source_str == "email":
+            # For email, we need to extract subject if available
+            # For now, treat body as containing any subject info
+            return self._registry.detect_institution_email(sender, "", body)
+
+        return None
+
+    def detect_institution(
+        self,
+        sender: str,
+        body: str,
+        source: MessageSource | str = MessageSource.SMS,
+    ) -> Institution | None:
         """
         Detect which institution this message is from.
+
+        First tries the adapter registry for dynamic detection,
+        then falls back to database institution patterns.
 
         Args:
             sender: Message sender
             body: Message body
+            source: Message source (sms or email)
 
         Returns:
             Institution if detected, None otherwise
         """
-        institutions = self.db.query(Institution).filter(Institution.is_active == True).all()
+        source_str = source.value if isinstance(source, MessageSource) else source
+
+        # First, try adapter-based detection
+        adapter = self.detect_adapter(sender, body, source_str)
+        if adapter:
+            # Look up institution in database
+            inst = (
+                self.db.query(Institution)
+                .filter(Institution.name == adapter.institution_name)
+                .filter(Institution.is_active == True)
+                .first()
+            )
+            if inst:
+                return inst
+
+            # Create institution record if adapter found but no DB record
+            logger.info(
+                f"Creating institution record for adapter: {adapter.institution_name}"
+            )
+            inst = Institution(
+                name=adapter.institution_name,
+                display_name=adapter.display_name,
+                sms_sender_patterns=json.dumps(adapter.sms_sender_patterns),
+                email_sender_patterns=json.dumps(adapter.email_sender_patterns),
+                parse_mode="regex",
+                is_active=True,
+            )
+            self.db.add(inst)
+            self.db.flush()
+            return inst
+
+        # Fall back to database-based detection
+        institutions = (
+            self.db.query(Institution).filter(Institution.is_active == True).all()
+        )
 
         for inst in institutions:
             # Check SMS sender patterns
-            if inst.sms_sender_patterns:
+            if source_str == "sms" and inst.sms_sender_patterns:
                 try:
                     patterns = json.loads(inst.sms_sender_patterns)
                     sender_upper = sender.upper()
@@ -493,10 +137,44 @@ class ParsingService:
                 except json.JSONDecodeError:
                     pass
 
+            # Check email sender patterns
+            if source_str == "email" and inst.email_sender_patterns:
+                try:
+                    patterns = json.loads(inst.email_sender_patterns)
+                    sender_lower = sender.lower()
+                    if any(p.lower() in sender_lower for p in patterns):
+                        return inst
+                except json.JSONDecodeError:
+                    pass
+
         return None
 
+    def get_parsers_for_institution(
+        self, institution_name: str | None
+    ) -> list[ParserProtocol]:
+        """
+        Get parsers for a specific institution.
+
+        Args:
+            institution_name: Institution identifier or None for all parsers
+
+        Returns:
+            List of parsers for the institution
+        """
+        if institution_name:
+            parsers = self._registry.get_parsers_for_institution(institution_name)
+            if parsers:
+                return parsers
+
+        # Fall back to all parsers
+        return self.parsers
+
     def parse_message(
-        self, message: Message, body: str, mode: ParseMode = ParseMode.REGEX
+        self,
+        message: Message,
+        body: str,
+        mode: ParseMode = ParseMode.REGEX,
+        institution_name: str | None = None,
     ) -> tuple[ParsedTransaction | None, str | None]:
         """
         Parse a message using the configured mode.
@@ -505,44 +183,88 @@ class ParsingService:
             message: The Message object
             body: Decrypted message body
             mode: Parsing mode to use
+            institution_name: Optional institution to use specific parsers
 
         Returns:
             Tuple of (ParsedTransaction or None, error message or None)
         """
         if mode == ParseMode.REGEX:
-            return self._parse_regex(message.sender, body, message.observed_at)
+            return self._parse_regex(
+                message.sender, body, message.observed_at, institution_name
+            )
         elif mode == ParseMode.OLLAMA:
-            return self._parse_ollama(message.sender, body, message.observed_at)
+            return self._parse_ollama(
+                message.sender, body, message.observed_at, institution_name
+            )
         elif mode == ParseMode.HYBRID:
             # Try regex first, fall back to Ollama
-            result, error = self._parse_regex(message.sender, body, message.observed_at)
+            result, error = self._parse_regex(
+                message.sender, body, message.observed_at, institution_name
+            )
             if result:
                 return result, None
             # Fall back to Ollama
-            logger.info(f"Regex parsing failed, falling back to Ollama for message {message.id}")
-            return self._parse_ollama(message.sender, body, message.observed_at)
+            logger.info(
+                f"Regex parsing failed, falling back to Ollama for message {message.id}"
+            )
+            return self._parse_ollama(
+                message.sender, body, message.observed_at, institution_name
+            )
 
         return None, f"Unknown parse mode: {mode}"
 
     def _parse_regex(
-        self, sender: str, body: str, observed_at: datetime
+        self,
+        sender: str,
+        body: str,
+        observed_at: datetime,
+        institution_name: str | None = None,
     ) -> tuple[ParsedTransaction | None, str | None]:
-        """Parse using regex parsers."""
-        for parser in self.parsers:
+        """
+        Parse using regex parsers.
+
+        Args:
+            sender: Message sender
+            body: Message body
+            observed_at: When message was received
+            institution_name: Optional institution to limit parsers
+
+        Returns:
+            Tuple of (ParsedTransaction or None, error message or None)
+        """
+        parsers = self.get_parsers_for_institution(institution_name)
+
+        for parser in parsers:
             if parser.can_parse(sender, body):
                 try:
                     result = parser.parse(sender, body, observed_at)
                     if result:
                         return result, None
                 except Exception as e:
+                    logger.exception(f"Parser {parser.__class__.__name__} error: {e}")
                     return None, f"Parser error: {str(e)}"
 
         return None, "No matching parser found for message"
 
     def _parse_ollama(
-        self, sender: str, body: str, observed_at: datetime
+        self,
+        sender: str,
+        body: str,
+        observed_at: datetime,
+        institution_name: str | None = None,
     ) -> tuple[ParsedTransaction | None, str | None]:
-        """Parse using Ollama AI."""
+        """
+        Parse using Ollama AI.
+
+        Args:
+            sender: Message sender
+            body: Message body
+            observed_at: When message was received
+            institution_name: Optional institution for custom prompt
+
+        Returns:
+            Tuple of (ParsedTransaction or None, error message or None)
+        """
         from app.services.ollama import OllamaError, get_ollama_service
 
         ollama = get_ollama_service()
@@ -551,11 +273,19 @@ class ParsingService:
             return None, "Ollama is not configured (OLLAMA_BASE_URL not set)"
 
         try:
+            # Get custom prompt template if available
+            custom_prompt = None
+            if institution_name:
+                adapter = self._registry.get_adapter(institution_name)
+                if adapter and adapter.ai_parse_prompt_template:
+                    custom_prompt = adapter.ai_parse_prompt_template
+
             # Call Ollama to parse the transaction
             result = ollama.parse_transaction(
                 sender=sender,
                 body=body,
                 observed_at_str=observed_at.isoformat(),
+                custom_prompt=custom_prompt,
             )
 
             # Validate required fields
@@ -588,6 +318,9 @@ class ParsingService:
                 except (InvalidOperation, ValueError):
                     pass
 
+            # Use detected institution or adapter's institution
+            inst_name = institution_name or self._detect_institution_name(sender)
+
             parsed = ParsedTransaction(
                 amount=amount,
                 currency=result.get("currency", "AED"),
@@ -598,7 +331,7 @@ class ParsingService:
                 account_tail=result.get("account_tail"),
                 available_balance=available_balance,
                 reference_id=result.get("reference_id"),
-                institution_name=self._detect_institution_name(sender),
+                institution_name=inst_name,
                 parse_confidence=0.8,  # AI parsing confidence
             )
 
@@ -612,11 +345,27 @@ class ParsingService:
             return None, f"Unexpected parsing error: {str(e)}"
 
     def _detect_institution_name(self, sender: str) -> str | None:
-        """Detect institution name from sender."""
+        """
+        Detect institution name from sender using adapters.
+
+        Args:
+            sender: Message sender
+
+        Returns:
+            Institution name or None
+        """
+        # Try adapter detection
+        adapter = self._registry.detect_institution_sms(sender, "")
+        if adapter:
+            return adapter.institution_name
+
+        # Legacy fallback
         sender_upper = sender.upper()
         if "MASHREQ" in sender_upper:
             return "mashreq"
-        # Add more institutions as needed
+        if "EMIRATES" in sender_upper or "ENBD" in sender_upper:
+            return "emirates_nbd"
+
         return None
 
     def process_pending_messages(self, limit: int = 100) -> dict:
@@ -652,14 +401,24 @@ class ParsingService:
                 # Decrypt body
                 body = decrypt_body(message.raw_body_encrypted)
 
-                # Detect institution
-                institution = self.detect_institution(message.sender, body)
-                mode = ParseMode.REGEX
-                if institution:
-                    mode = ParseMode(institution.parse_mode) if institution.parse_mode else ParseMode.REGEX
+                # Detect institution (now supports SMS and email)
+                source = message.source if message.source else MessageSource.SMS
+                institution = self.detect_institution(message.sender, body, source)
 
-                # Parse
-                parsed, error = self.parse_message(message, body, mode)
+                mode = ParseMode.REGEX
+                institution_name = None
+                if institution:
+                    mode = (
+                        ParseMode(institution.parse_mode)
+                        if institution.parse_mode
+                        else ParseMode.REGEX
+                    )
+                    institution_name = institution.name
+
+                # Parse with institution context
+                parsed, error = self.parse_message(
+                    message, body, mode, institution_name
+                )
 
                 if parsed:
                     # Try to merge/create transaction
@@ -683,9 +442,55 @@ class ParsingService:
                 self.db.commit()
 
             except Exception as e:
+                logger.exception(f"Error processing message {message.id}: {e}")
                 message.parse_status = ParseStatus.FAILED
                 message.parse_error = f"Processing error: {str(e)}"
                 stats["failed"] += 1
                 self.db.commit()
 
         return stats
+
+    def test_pattern(
+        self, sender: str, body: str, source: str = "sms"
+    ) -> dict:
+        """
+        Test which adapter/parser matches a sample message.
+
+        Args:
+            sender: Sample sender
+            body: Sample body
+            source: Message source (sms or email)
+
+        Returns:
+            Dict with detection results
+        """
+        result = {
+            "adapter_detected": None,
+            "institution_name": None,
+            "parsers_matched": [],
+            "parse_result": None,
+            "parse_error": None,
+        }
+
+        # Detect adapter
+        adapter = self.detect_adapter(sender, body, source)
+        if adapter:
+            result["adapter_detected"] = adapter.display_name
+            result["institution_name"] = adapter.institution_name
+
+            # Try each parser
+            from datetime import datetime, timezone
+
+            observed_at = datetime.now(timezone.utc)
+            for parser in adapter.get_parsers():
+                if parser.can_parse(sender, body):
+                    result["parsers_matched"].append(parser.__class__.__name__)
+                    try:
+                        parsed = parser.parse(sender, body, observed_at)
+                        if parsed:
+                            result["parse_result"] = parsed.model_dump(mode="json")
+                            break
+                    except Exception as e:
+                        result["parse_error"] = str(e)
+
+        return result

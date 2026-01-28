@@ -246,6 +246,7 @@ Respond ONLY with the JSON object, no other text or markdown."""
         sender: str,
         body: str,
         observed_at_str: str,
+        custom_prompt: str | None = None,
     ) -> dict[str, Any]:
         """
         Parse transaction data from SMS/email body using AI.
@@ -254,6 +255,8 @@ Respond ONLY with the JSON object, no other text or markdown."""
             sender: Message sender
             body: Message body text
             observed_at_str: ISO format timestamp when message was received
+            custom_prompt: Optional custom prompt template (Jinja2 format)
+                          Variables: sender, body, observed_at_str
 
         Returns:
             Parsed transaction data dict
@@ -274,7 +277,22 @@ Respond ONLY with the JSON object, no other text or markdown."""
             "required": ["amount", "currency", "direction"],
         }
 
-        prompt = f"""Extract transaction details from this bank SMS/email message.
+        # Use custom prompt if provided, otherwise use default
+        if custom_prompt:
+            try:
+                from jinja2 import Template
+                template = Template(custom_prompt)
+                prompt = template.render(
+                    sender=sender,
+                    body=body,
+                    observed_at_str=observed_at_str,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to render custom prompt: {e}, using default")
+                custom_prompt = None
+
+        if not custom_prompt:
+            prompt = f"""Extract transaction details from this bank SMS/email message.
 
 Sender: {sender}
 Received at: {observed_at_str}
