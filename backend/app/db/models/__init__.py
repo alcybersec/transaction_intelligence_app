@@ -1,7 +1,9 @@
 """Database models package."""
 
+from app.db.models.budget import Budget
 from app.db.models.institution import Institution, Instrument, InstrumentType
 from app.db.models.message import Message, MessageSource, ParseMode, ParseStatus
+from app.db.models.report import Report, ReportGeneratedBy
 from app.db.models.transaction import (
     EvidenceRole,
     TransactionDirection,
@@ -46,4 +48,9 @@ __all__ = [
     "EvidenceRole",
     # User
     "User",
+    # Budget
+    "Budget",
+    # Report
+    "Report",
+    "ReportGeneratedBy",
 ]

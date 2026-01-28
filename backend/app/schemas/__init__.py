@@ -1,5 +1,16 @@
 """Pydantic schemas package."""
 
+from app.schemas.analytics import (
+    CategoryBreakdownResponse,
+    CategorySpending,
+    DailySpending,
+    DashboardAnalyticsResponse,
+    ExportRequest,
+    MonthlyComparison,
+    SpendingTimeSeriesResponse,
+    TopVendorsResponse,
+    VendorStats,
+)
 from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
@@ -9,12 +20,26 @@ from app.schemas.auth import (
     UserCreate,
     UserResponse,
 )
+from app.schemas.budget import (
+    BudgetCreateRequest,
+    BudgetListResponse,
+    BudgetProgressResponse,
+    BudgetResponse,
+    BudgetSummaryResponse,
+    BudgetUpdateRequest,
+)
 from app.schemas.ingest import (
     MessageResponse,
     SMSIngestBatchRequest,
     SMSIngestBatchResponse,
     SMSIngestRequest,
     SMSIngestResponse,
+)
+from app.schemas.report import (
+    ReportDetailResponse,
+    ReportGenerateRequest,
+    ReportListResponse,
+    ReportResponse,
 )
 from app.schemas.transaction import (
     ManualParseRequest,
@@ -92,4 +117,26 @@ __all__ = [
     "WalletBalanceUpdateResponse",
     "WalletSummaryResponse",
     "DashboardSummaryResponse",
+    # Analytics
+    "CategorySpending",
+    "CategoryBreakdownResponse",
+    "DailySpending",
+    "SpendingTimeSeriesResponse",
+    "VendorStats",
+    "TopVendorsResponse",
+    "MonthlyComparison",
+    "DashboardAnalyticsResponse",
+    "ExportRequest",
+    # Budget
+    "BudgetCreateRequest",
+    "BudgetUpdateRequest",
+    "BudgetResponse",
+    "BudgetProgressResponse",
+    "BudgetListResponse",
+    "BudgetSummaryResponse",
+    # Report
+    "ReportGenerateRequest",
+    "ReportResponse",
+    "ReportDetailResponse",
+    "ReportListResponse",
 ]

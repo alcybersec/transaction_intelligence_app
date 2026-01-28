@@ -3,11 +3,12 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Settings,
   LayoutDashboard,
-  Activity,
   Store,
   Tag,
   LogOut,
   Receipt,
+  PiggyBank,
+  FileText,
 } from 'lucide-react'
 import { useAuth } from './contexts/AuthContext'
 import { LoginPage } from './components/LoginPage'
@@ -16,6 +17,9 @@ import { TransactionList } from './components/TransactionList'
 import { TransactionDetail } from './components/TransactionDetail'
 import { CategoriesManager } from './components/CategoriesManager'
 import { VendorList } from './components/VendorList'
+import { Dashboard } from './components/Dashboard'
+import { BudgetsManager } from './components/BudgetsManager'
+import { Reports } from './components/Reports'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -25,11 +29,11 @@ interface HealthResponse {
   version: string
 }
 
-type Tab = 'transactions' | 'vendors' | 'categories' | 'settings'
+type Tab = 'dashboard' | 'transactions' | 'vendors' | 'categories' | 'budgets' | 'reports' | 'settings'
 
 function AuthenticatedApp() {
   const { user, logout } = useAuth()
-  const [activeTab, setActiveTab] = useState<Tab>('transactions')
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
 
   const {
@@ -86,13 +90,24 @@ function AuthenticatedApp() {
           </div>
 
           {/* Navigation Tabs */}
-          <nav className="flex gap-1 mt-4 -mb-px">
+          <nav className="flex gap-1 mt-4 -mb-px overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'dashboard'
+                  ? 'border-primary text-primary bg-muted/50'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
+              }`}
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </button>
             <button
               onClick={() => {
                 setActiveTab('transactions')
                 setSelectedTransactionId(null)
               }}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'transactions'
                   ? 'border-primary text-primary bg-muted/50'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
@@ -102,8 +117,30 @@ function AuthenticatedApp() {
               Transactions
             </button>
             <button
+              onClick={() => setActiveTab('budgets')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'budgets'
+                  ? 'border-primary text-primary bg-muted/50'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
+              }`}
+            >
+              <PiggyBank className="h-4 w-4" />
+              Budgets
+            </button>
+            <button
+              onClick={() => setActiveTab('reports')}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'reports'
+                  ? 'border-primary text-primary bg-muted/50'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
+              }`}
+            >
+              <FileText className="h-4 w-4" />
+              Reports
+            </button>
+            <button
               onClick={() => setActiveTab('vendors')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'vendors'
                   ? 'border-primary text-primary bg-muted/50'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
@@ -114,7 +151,7 @@ function AuthenticatedApp() {
             </button>
             <button
               onClick={() => setActiveTab('categories')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'categories'
                   ? 'border-primary text-primary bg-muted/50'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
@@ -125,7 +162,7 @@ function AuthenticatedApp() {
             </button>
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'settings'
                   ? 'border-primary text-primary bg-muted/50'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
@@ -139,6 +176,18 @@ function AuthenticatedApp() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {activeTab === 'dashboard' && (
+          <div className="max-w-5xl">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold">Dashboard</h2>
+              <p className="text-muted-foreground">
+                Overview of your spending, budgets, and financial trends.
+              </p>
+            </div>
+            <Dashboard />
+          </div>
+        )}
+
         {activeTab === 'transactions' && (
           <div className="max-w-4xl">
             <div className="mb-6">
@@ -157,6 +206,24 @@ function AuthenticatedApp() {
                 onSelectTransaction={(id) => setSelectedTransactionId(id)}
               />
             )}
+          </div>
+        )}
+
+        {activeTab === 'budgets' && (
+          <div className="max-w-4xl">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold">Budgets</h2>
+              <p className="text-muted-foreground">
+                Set monthly spending limits for categories and track your progress.
+              </p>
+            </div>
+            <BudgetsManager />
+          </div>
+        )}
+
+        {activeTab === 'reports' && (
+          <div className="max-w-4xl">
+            <Reports />
           </div>
         )}
 
