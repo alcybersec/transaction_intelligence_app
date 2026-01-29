@@ -14,10 +14,13 @@ import structlog
 from imapclient import IMAPClient
 from sqlalchemy.exc import IntegrityError
 
+from rq import Queue
+
 from app.config import settings
 from app.core.encryption import encrypt_body, hash_body
 from app.db.models import Message, MessageSource, ParseStatus
 from app.db.session import SessionLocal
+from app.jobs import trigger_parse_message
 
 logger = structlog.get_logger()
 
@@ -232,7 +235,7 @@ class IMAPIngester:
         body: str,
         observed_at: datetime,
     ) -> Message | None:
-        """Store email as a message in database."""
+        """Store email as a message in database and queue parsing."""
         with SessionLocal() as db:
             try:
                 message = Message(
@@ -253,12 +256,26 @@ class IMAPIngester:
                     message_id=str(message.id),
                     sender=sender,
                 )
+
+                # Queue parsing job
+                self._queue_parse_job(str(message.id))
+
                 return message
 
             except IntegrityError:
                 db.rollback()
                 logger.debug("Duplicate email skipped", source_uid=source_uid)
                 return None
+
+    def _queue_parse_job(self, message_id: str) -> None:
+        """Queue a background job to parse the message."""
+        try:
+            self._connect_redis()
+            queue = Queue(connection=self.redis_client)
+            queue.enqueue(trigger_parse_message, message_id)
+            logger.debug("Queued parse job", message_id=message_id)
+        except Exception as e:
+            logger.warning("Failed to queue parse job", message_id=message_id, error=str(e))
 
     def process_email(self, uid: int, raw_email: bytes) -> bool:
         """

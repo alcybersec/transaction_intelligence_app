@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     ollama_base_url: str | None = None
     ollama_model: str = "llama3"
 
+    # API for internal calls (parsing trigger)
+    api_port: int = 8001
+
+    @property
+    def api_url(self) -> str:
+        return f"http://127.0.0.1:{self.api_port}"
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

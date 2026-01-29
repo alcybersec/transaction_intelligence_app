@@ -11,6 +11,7 @@ from app.api.routes.budgets import router as budgets_router
 from app.api.routes.categories import router as categories_router
 from app.api.routes.health import router as health_router
 from app.api.routes.ingest import router as ingest_router
+from app.api.routes.internal import router as internal_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.transactions import router as transactions_router
 from app.api.routes.vendors import router as vendors_router
@@ -31,3 +32,4 @@ router.include_router(reports_router, prefix="/reports", tags=["reports"])
 router.include_router(ai_router, prefix="/ai", tags=["ai"])
 router.include_router(adapters_router, prefix="/adapters", tags=["adapters"])
 router.include_router(admin_router, prefix="/admin", tags=["admin"])
+router.include_router(internal_router, prefix="/internal", tags=["internal"])
