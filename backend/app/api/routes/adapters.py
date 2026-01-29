@@ -74,7 +74,9 @@ class TestPatternResponse(BaseModel):
 class InstitutionConfigUpdate(BaseModel):
     """Request model for updating institution config."""
 
-    parse_mode: str | None = Field(None, description="Parsing mode: regex, ollama, hybrid")
+    parse_mode: str | None = Field(None, description="Default parsing mode: regex, ollama, hybrid")
+    sms_parse_mode: str | None = Field(None, description="SMS-specific parsing mode (overrides default)")
+    email_parse_mode: str | None = Field(None, description="Email-specific parsing mode (overrides default)")
     is_active: bool | None = Field(None, description="Whether institution is active")
     sms_sender_patterns: list[str] | None = Field(None, description="SMS sender patterns")
     email_sender_patterns: list[str] | None = Field(None, description="Email sender patterns")
@@ -173,6 +175,8 @@ def get_adapter_config(
             "institution_name": institution_name,
             "display_name": adapter.display_name,
             "parse_mode": "regex",
+            "sms_parse_mode": None,
+            "email_parse_mode": None,
             "is_active": True,
             "sms_sender_patterns": adapter.sms_sender_patterns,
             "email_sender_patterns": adapter.email_sender_patterns,
@@ -185,6 +189,8 @@ def get_adapter_config(
         "institution_name": institution.name,
         "display_name": institution.display_name,
         "parse_mode": institution.parse_mode,
+        "sms_parse_mode": institution.sms_parse_mode,
+        "email_parse_mode": institution.email_parse_mode,
         "is_active": institution.is_active,
         "sms_sender_patterns": (
             json.loads(institution.sms_sender_patterns)
@@ -243,14 +249,33 @@ def update_adapter_config(
         )
         db.add(institution)
 
+    # Validate parse modes
+    valid_modes = ["regex", "ollama", "hybrid"]
+
     # Update fields
     if config.parse_mode is not None:
-        if config.parse_mode not in ["regex", "ollama", "hybrid"]:
+        if config.parse_mode not in valid_modes:
             raise HTTPException(
                 status_code=400,
                 detail="Invalid parse_mode. Must be: regex, ollama, or hybrid",
             )
         institution.parse_mode = config.parse_mode
+
+    if config.sms_parse_mode is not None:
+        if config.sms_parse_mode and config.sms_parse_mode not in valid_modes:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid sms_parse_mode. Must be: regex, ollama, or hybrid",
+            )
+        institution.sms_parse_mode = config.sms_parse_mode or None
+
+    if config.email_parse_mode is not None:
+        if config.email_parse_mode and config.email_parse_mode not in valid_modes:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid email_parse_mode. Must be: regex, ollama, or hybrid",
+            )
+        institution.email_parse_mode = config.email_parse_mode or None
 
     if config.is_active is not None:
         institution.is_active = config.is_active
@@ -268,6 +293,8 @@ def update_adapter_config(
         "success": True,
         "institution_name": institution.name,
         "parse_mode": institution.parse_mode,
+        "sms_parse_mode": institution.sms_parse_mode,
+        "email_parse_mode": institution.email_parse_mode,
         "is_active": institution.is_active,
     }
 

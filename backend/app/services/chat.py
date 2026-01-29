@@ -1,6 +1,5 @@
 """AI-powered chat service for spending Q&A."""
 
-import logging
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -9,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.db.models import (
     Category,
     TransactionDirection,
@@ -19,7 +19,7 @@ from app.db.models import (
 )
 from app.services.ollama import OllamaError, get_ollama_service
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # Allowlist of query types with their parameters and descriptions

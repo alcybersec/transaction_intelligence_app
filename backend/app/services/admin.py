@@ -1,6 +1,5 @@
 """Admin service for data repair and maintenance operations."""
 
-import logging
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -9,6 +8,7 @@ from sqlalchemy import and_, delete, func, or_, update
 from sqlalchemy.orm import Session
 
 from app.core.encryption import decrypt_body
+from app.core.logging import get_logger
 from app.core.metrics import admin_remerge_total, admin_reparse_total
 from app.db.models import (
     EvidenceRole,
@@ -25,7 +25,7 @@ from app.services.merge import MergeEngine
 from app.services.parsing import ParsingService
 from app.services.vendor import VendorService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class AdminService:

@@ -1,7 +1,6 @@
 """Report service for generating monthly financial reports."""
 
 import io
-import logging
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -9,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.logging import get_logger
 from app.db.models import (
     Category,
     Report,
@@ -27,7 +27,7 @@ from app.schemas.report import (
 )
 from app.services.analytics import AnalyticsService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ReportService:

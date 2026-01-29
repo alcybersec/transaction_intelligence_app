@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     ollama_base_url: str | None = None
     ollama_model: str = "llama3"
 
+    # Logging
+    log_format: str = "console"  # "json" for production, "console" for development
+    log_level: str = "INFO"
+
+    # IP Allowlist (optional security layer)
+    allowed_ip_ranges: str | None = None  # e.g., "192.168.1.0/24,100.64.0.0/10"
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

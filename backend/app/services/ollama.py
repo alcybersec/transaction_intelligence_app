@@ -1,15 +1,15 @@
 """Ollama AI service for parsing and categorization."""
 
 import json
-import logging
 from typing import Any
 
 import httpx
 from pydantic import BaseModel
 
 from app.config import settings
+from app.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class OllamaError(Exception):

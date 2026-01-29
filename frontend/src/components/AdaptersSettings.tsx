@@ -102,6 +102,8 @@ interface ConfigurePanelProps {
 function ConfigurePanel({ institutionName, onClose }: ConfigurePanelProps) {
   const queryClient = useQueryClient()
   const [parseMode, setParseMode] = useState<string>('regex')
+  const [smsParseMode, setSmsParseMode] = useState<string>('')
+  const [emailParseMode, setEmailParseMode] = useState<string>('')
   const [isActive, setIsActive] = useState(true)
 
   const { data: config, isLoading } = useQuery({
@@ -109,12 +111,14 @@ function ConfigurePanel({ institutionName, onClose }: ConfigurePanelProps) {
     queryFn: () => getAdapterConfig(institutionName),
     onSuccess: (data) => {
       setParseMode(data.parse_mode)
+      setSmsParseMode(data.sms_parse_mode || '')
+      setEmailParseMode(data.email_parse_mode || '')
       setIsActive(data.is_active)
     },
   })
 
   const updateMutation = useMutation({
-    mutationFn: (updates: { parse_mode?: string; is_active?: boolean }) =>
+    mutationFn: (updates: { parse_mode?: string; sms_parse_mode?: string; email_parse_mode?: string; is_active?: boolean }) =>
       updateAdapterConfig(institutionName, updates),
     onSuccess: () => {
       queryClient.invalidateQueries(['adapterConfig', institutionName])
@@ -125,6 +129,8 @@ function ConfigurePanel({ institutionName, onClose }: ConfigurePanelProps) {
   const handleSave = () => {
     updateMutation.mutate({
       parse_mode: parseMode,
+      sms_parse_mode: smsParseMode || undefined,
+      email_parse_mode: emailParseMode || undefined,
       is_active: isActive,
     })
   }
@@ -150,7 +156,7 @@ function ConfigurePanel({ institutionName, onClose }: ConfigurePanelProps) {
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Parsing Mode</label>
+          <label className="block text-sm font-medium mb-2">Default Parsing Mode</label>
           <select
             value={parseMode}
             onChange={(e) => setParseMode(e.target.value)}
@@ -165,6 +171,35 @@ function ConfigurePanel({ institutionName, onClose }: ConfigurePanelProps) {
             {parseMode === 'ollama' && 'Uses AI for flexible parsing of varied message formats.'}
             {parseMode === 'hybrid' && 'Tries regex first, falls back to AI if no match.'}
           </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium mb-2">SMS Parse Mode</label>
+            <select
+              value={smsParseMode}
+              onChange={(e) => setSmsParseMode(e.target.value)}
+              className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
+            >
+              <option value="">Use default ({parseMode})</option>
+              <option value="regex">Regex</option>
+              <option value="ollama">Ollama AI</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Email Parse Mode</label>
+            <select
+              value={emailParseMode}
+              onChange={(e) => setEmailParseMode(e.target.value)}
+              className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
+            >
+              <option value="">Use default ({parseMode})</option>
+              <option value="regex">Regex</option>
+              <option value="ollama">Ollama AI</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+          </div>
         </div>
 
         <div>

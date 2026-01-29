@@ -34,6 +34,8 @@ export interface AdapterConfig {
   institution_name: string
   display_name: string
   parse_mode: string
+  sms_parse_mode: string | null
+  email_parse_mode: string | null
   is_active: boolean
   sms_sender_patterns: string[]
   email_sender_patterns: string[]
@@ -120,6 +122,8 @@ export async function updateAdapterConfig(
   institutionName: string,
   config: {
     parse_mode?: string
+    sms_parse_mode?: string
+    email_parse_mode?: string
     is_active?: boolean
     sms_sender_patterns?: string[]
     email_sender_patterns?: string[]

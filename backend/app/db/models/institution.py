@@ -58,6 +58,16 @@ class Institution(Base):
         default="regex",
         comment="Default parsing mode: regex, ollama, hybrid",
     )
+    sms_parse_mode = Column(
+        String(50),
+        nullable=True,
+        comment="Parse mode for SMS messages: regex, ollama, hybrid. Falls back to parse_mode if null.",
+    )
+    email_parse_mode = Column(
+        String(50),
+        nullable=True,
+        comment="Parse mode for email messages: regex, ollama, hybrid. Falls back to parse_mode if null.",
+    )
     is_active = Column(Boolean, nullable=False, default=True)
 
     created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
@@ -70,6 +80,22 @@ class Institution(Base):
 
     # Relationships
     instruments = relationship("Instrument", back_populates="institution")
+
+    def get_parse_mode(self, source: str = "sms") -> str:
+        """
+        Get the parse mode for a specific message source.
+
+        Args:
+            source: Message source - "sms" or "email"
+
+        Returns:
+            Parse mode string: "regex", "ollama", or "hybrid"
+        """
+        if source == "sms" and self.sms_parse_mode:
+            return self.sms_parse_mode
+        elif source == "email" and self.email_parse_mode:
+            return self.email_parse_mode
+        return self.parse_mode or "regex"
 
     def __repr__(self) -> str:
         return f"<Institution(id={self.id}, name={self.name})>"

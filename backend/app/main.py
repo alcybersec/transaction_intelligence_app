@@ -4,7 +4,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router
+from app.config import settings
+from app.core.logging import get_logger, setup_logging
 from app.core.middleware import PrometheusMiddleware
+
+# Initialize structured logging
+setup_logging()
+
+logger = get_logger(__name__)
 
 app = FastAPI(
     title="Transaction Intelligence API",
@@ -28,6 +35,15 @@ app.add_middleware(
 
 # Prometheus metrics middleware
 app.add_middleware(PrometheusMiddleware)
+
+# IP Allowlist middleware (optional, for LAN/Tailscale restriction)
+if settings.allowed_ip_ranges:
+    from app.core.ip_allowlist import IPAllowlistMiddleware
+
+    allowed_ranges = [r.strip() for r in settings.allowed_ip_ranges.split(",") if r.strip()]
+    if allowed_ranges:
+        app.add_middleware(IPAllowlistMiddleware, allowed_ranges=allowed_ranges)
+        logger.info("ip_allowlist_middleware_enabled", ranges=allowed_ranges)
 
 # Include API routes
 app.include_router(router)

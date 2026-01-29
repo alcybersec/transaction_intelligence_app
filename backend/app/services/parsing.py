@@ -1,7 +1,6 @@
 """Parsing service for extracting transaction data from messages."""
 
 import json
-import logging
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
@@ -9,10 +8,11 @@ from sqlalchemy.orm import Session
 
 from app.adapters import get_adapter_registry
 from app.adapters.base import BankAdapter, ParserProtocol
+from app.core.logging import get_logger
 from app.db.models import Institution, Message, MessageSource, ParseMode, ParseStatus
 from app.schemas.transaction import ParsedTransaction
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # Legacy parser imports for backwards compatibility
@@ -368,6 +368,135 @@ class ParsingService:
 
         return None
 
+    def _is_potential_reversal(self, body: str) -> bool:
+        """
+        Check if a message body indicates a reversal/refund transaction.
+
+        Args:
+            body: Message body text
+
+        Returns:
+            True if the message likely represents a reversal/refund
+        """
+        reversal_keywords = [
+            "refund",
+            "reversal",
+            "reversed",
+            "return",
+            "returned",
+            "cancelled",
+            "canceled",
+            "chargeback",
+            "credit back",
+            "credited back",
+            "money back",
+            "cashback",
+        ]
+        body_lower = body.lower()
+        return any(keyword in body_lower for keyword in reversal_keywords)
+
+    def process_single_message(self, message_id) -> dict:
+        """
+        Process a single message by ID.
+
+        Called by background tasks after ingest to auto-parse new messages.
+
+        Args:
+            message_id: UUID of the message to process
+
+        Returns:
+            Statistics dict with processing result
+        """
+        from uuid import UUID
+
+        from app.core.encryption import decrypt_body
+        from app.services.merge import MergeEngine
+        from app.services.vendor import VendorService
+
+        # Ensure message_id is a UUID
+        if isinstance(message_id, str):
+            message_id = UUID(message_id)
+
+        vendor_service = VendorService(self.db)
+        merge_engine = MergeEngine(self.db, vendor_service)
+
+        stats = {"success": False, "error": None, "reversal_linked": False}
+
+        message = (
+            self.db.query(Message)
+            .filter(Message.id == message_id)
+            .first()
+        )
+
+        if not message:
+            stats["error"] = f"Message {message_id} not found"
+            return stats
+
+        if message.parse_status != ParseStatus.PENDING:
+            # Already processed
+            stats["error"] = f"Message already has status {message.parse_status.value}"
+            return stats
+
+        try:
+            # Decrypt body
+            body = decrypt_body(message.raw_body_encrypted)
+
+            # Detect institution
+            source = message.source if message.source else MessageSource.SMS
+            institution = self.detect_institution(message.sender, body, source)
+
+            mode = ParseMode.REGEX
+            institution_name = None
+            if institution:
+                # Use source-specific parse mode
+                source_str = source.value if hasattr(source, "value") else str(source)
+                mode = ParseMode(institution.get_parse_mode(source_str))
+                institution_name = institution.name
+
+            # Parse with institution context
+            parsed, error = self.parse_message(message, body, mode, institution_name)
+
+            if parsed:
+                try:
+                    txn_group = merge_engine.process_parsed_transaction(message, parsed)
+                    message.parse_status = ParseStatus.SUCCESS
+                    message.parse_mode = mode
+                    message.parse_error = None
+                    stats["success"] = True
+
+                    # Check for reversal
+                    if self._is_potential_reversal(body):
+                        original = merge_engine.find_reversal_candidate(txn_group)
+                        if original:
+                            merge_engine.link_reversal(txn_group, original)
+                            stats["reversal_linked"] = True
+                            logger.info(
+                                "linked_reversal",
+                                reversal_id=str(txn_group.id),
+                                original_id=str(original.id),
+                            )
+                except Exception as e:
+                    message.parse_status = ParseStatus.NEEDS_REVIEW
+                    message.parse_mode = mode
+                    message.parse_error = f"Merge error: {str(e)}"
+                    stats["error"] = f"Merge error: {str(e)}"
+            else:
+                message.parse_status = ParseStatus.FAILED
+                message.parse_mode = mode
+                message.parse_error = error
+                stats["error"] = error
+
+            self.db.commit()
+
+        except Exception as e:
+            logger.exception("error_processing_message", message_id=str(message_id), error=str(e))
+            message.parse_status = ParseStatus.FAILED
+            message.parse_error = f"Processing error: {str(e)}"
+            stats["error"] = str(e)
+            self.db.commit()
+
+        return stats
+
     def process_pending_messages(self, limit: int = 100) -> dict:
         """
         Process pending messages in batch.
@@ -408,11 +537,9 @@ class ParsingService:
                 mode = ParseMode.REGEX
                 institution_name = None
                 if institution:
-                    mode = (
-                        ParseMode(institution.parse_mode)
-                        if institution.parse_mode
-                        else ParseMode.REGEX
-                    )
+                    # Use source-specific parse mode
+                    source_str = source.value if hasattr(source, "value") else str(source)
+                    mode = ParseMode(institution.get_parse_mode(source_str))
                     institution_name = institution.name
 
                 # Parse with institution context
@@ -423,11 +550,22 @@ class ParsingService:
                 if parsed:
                     # Try to merge/create transaction
                     try:
-                        merge_engine.process_parsed_transaction(message, parsed)
+                        txn_group = merge_engine.process_parsed_transaction(message, parsed)
                         message.parse_status = ParseStatus.SUCCESS
                         message.parse_mode = mode
                         message.parse_error = None
                         stats["success"] += 1
+
+                        # Check if this is a potential reversal/refund
+                        if self._is_potential_reversal(body):
+                            original = merge_engine.find_reversal_candidate(txn_group)
+                            if original:
+                                merge_engine.link_reversal(txn_group, original)
+                                logger.info(
+                                    "linked_reversal",
+                                    reversal_id=str(txn_group.id),
+                                    original_id=str(original.id),
+                                )
                     except Exception as e:
                         message.parse_status = ParseStatus.NEEDS_REVIEW
                         message.parse_mode = mode

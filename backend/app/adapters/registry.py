@@ -6,15 +6,16 @@ and provides methods to look them up by institution name.
 """
 
 import importlib
-import logging
 import pkgutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from app.core.logging import get_logger
+
 if TYPE_CHECKING:
     from app.adapters.base import AdapterInfo, BankAdapter, ParserProtocol
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Global registry instance
 _registry: "AdapterRegistry | None" = None

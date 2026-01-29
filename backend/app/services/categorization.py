@@ -1,12 +1,12 @@
 """AI-powered categorization service for vendors."""
 
-import logging
 from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.logging import get_logger
 from app.db.models import (
     Category,
     CategorySuggestion,
@@ -17,7 +17,7 @@ from app.db.models import (
 )
 from app.services.ollama import OllamaError, get_ollama_service
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CategorizationService:
