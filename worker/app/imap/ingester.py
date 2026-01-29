@@ -2,6 +2,7 @@
 
 import email
 import re
+import ssl
 import time
 from datetime import datetime, timezone
 from email.header import decode_header
@@ -115,9 +116,15 @@ class IMAPIngester:
                 user=self.username,
             )
 
-            # Proton Bridge uses STARTTLS on port 1143
+            # Proton Bridge uses STARTTLS on port 1143 with self-signed cert
             self.client = IMAPClient(self.host, port=self.port, ssl=False)
-            self.client.starttls()
+
+            # Create SSL context that accepts self-signed certificates
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+            self.client.starttls(ssl_context=ssl_context)
             self.client.login(self.username, self.password)
 
             logger.info("IMAP connection established")
