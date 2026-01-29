@@ -26,12 +26,13 @@ class MashreqCardPurchaseParser:
     """
 
     # Main pattern for card purchase
+    # Handles: "Card ending 1234 was used for AED 50.00" and "Card ending with 1234 was used for a purchase of AED 50.00"
     CARD_PURCHASE_PATTERN = re.compile(
-        r"(?:Your\s+)?(?:Mashreq\s+)?Card\s+ending\s+(\d{4})\s+"
-        r"(?:was\s+)?used\s+for\s+"
+        r"(?:Your\s+)?(?:Mashreq\s+)?Card\s+ending\s+(?:with\s+)?(\d{4})\s+"
+        r"(?:was\s+)?used\s+(?:for\s+)?(?:a\s+purchase\s+of\s+)?"
         r"([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
         r"at\s+(.+?)\s+"
-        r"on\s+(\d{1,2}[-/][A-Za-z]{3}[-/]\d{2,4})(?:\s+(\d{1,2}:\d{2}))?",
+        r"on\s+(\d{1,2}[-/][A-Za-z]{3}[-/]\d{2,4})(?:\s+(\d{1,2}:\d{2}(?:\s*[AP]M)?))?",
         re.IGNORECASE,
     )
 
@@ -46,10 +47,12 @@ class MashreqCardPurchaseParser:
     )
 
     # NEO VISA Debit Card pattern (newer format)
+    # Handles: "NEO VISA Debit Card Card ending with 5300 was used for a purchase of AED 58.54"
     NEO_CARD_PATTERN = re.compile(
         r"(?:Thank\s+you\s+for\s+using\s+)?"
-        r"(?:NEO\s+)?(?:VISA\s+)?(?:Debit\s+)?Card\s+Card\s+ending\s+(\d{4})\s+"
-        r"for\s+([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
+        r"(?:NEO\s+)?(?:VISA\s+)?(?:Debit\s+)?Card\s+(?:Card\s+)?ending\s+(?:with\s+)?(\d{4})\s+"
+        r"(?:was\s+used\s+)?(?:for\s+)?(?:a\s+purchase\s+of\s+)?"
+        r"([A-Z]{3})\s*([\d,]+\.?\d*)\s+"
         r"at\s+(.+?)\s+"
         r"on\s+(\d{1,2}[-/][A-Za-z]{3}[-/]\d{2,4})\s+(\d{1,2}:\d{2}(?:\s*[AP]M)?)",
         re.IGNORECASE,
