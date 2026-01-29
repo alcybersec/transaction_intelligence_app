@@ -340,13 +340,15 @@ class CategorizationService:
         self,
         vendor_ids: list[UUID] | None = None,
         max_vendors: int = 10,
+        process_all: bool = False,
     ) -> dict[str, int]:
         """
         Generate suggestions for multiple vendors.
 
         Args:
             vendor_ids: Optional list of specific vendors
-            max_vendors: Maximum vendors to process if no list provided
+            max_vendors: Batch size (vendors per iteration)
+            process_all: If True, iterate through ALL uncategorized vendors
 
         Returns:
             Statistics dict with success/failure counts
@@ -359,9 +361,26 @@ class CategorizationService:
                 .filter(Vendor.id.in_(vendor_ids))
                 .all()
             )
+            self._process_vendor_batch(vendors, stats)
+        elif process_all:
+            # Process all uncategorized vendors in batches
+            while True:
+                vendors = self.get_uncategorized_vendors(limit=max_vendors)
+                if not vendors:
+                    break
+                self._process_vendor_batch(vendors, stats)
         else:
             vendors = self.get_uncategorized_vendors(limit=max_vendors)
+            self._process_vendor_batch(vendors, stats)
 
+        return stats
+
+    def _process_vendor_batch(
+        self,
+        vendors: list[Vendor],
+        stats: dict[str, int],
+    ) -> None:
+        """Process a batch of vendors for category suggestions."""
         for vendor in vendors:
             stats["processed"] += 1
 
@@ -384,5 +403,3 @@ class CategorizationService:
                 stats["success"] += 1
             else:
                 stats["failed"] += 1
-
-        return stats

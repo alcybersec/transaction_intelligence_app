@@ -152,7 +152,8 @@ class BatchSuggestRequest(BaseModel):
     vendor_ids: list[UUID] | None = Field(
         default=None, description="Specific vendors to process, or None for uncategorized"
     )
-    max_vendors: int = Field(default=10, ge=1, le=50)
+    max_vendors: int = Field(default=10, ge=1, le=50, description="Batch size per iteration")
+    process_all: bool = Field(default=True, description="Process ALL uncategorized vendors (in batches)")
 
 
 class BatchSuggestResponse(BaseModel):

@@ -170,6 +170,7 @@ def batch_generate_suggestions(
     stats = service.batch_suggest_categories(
         vendor_ids=request.vendor_ids,
         max_vendors=request.max_vendors,
+        process_all=request.process_all,
     )
 
     return BatchSuggestResponse(**stats)
