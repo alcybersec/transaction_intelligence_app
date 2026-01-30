@@ -320,7 +320,7 @@ class CategorizationService:
         return suggestions, total
 
     def get_uncategorized_vendors(self, limit: int = 50) -> list[Vendor]:
-        """Get vendors without category rules."""
+        """Get vendors without category rules or pending suggestions."""
         # Subquery for vendors with rules
         vendors_with_rules = (
             self.db.query(VendorCategoryRule.vendor_id)
@@ -328,9 +328,19 @@ class CategorizationService:
             .distinct()
         )
 
+        # Subquery for vendors with pending suggestions
+        vendors_with_pending = (
+            self.db.query(CategorySuggestion.vendor_id)
+            .filter(CategorySuggestion.status == "pending")
+            .distinct()
+        )
+
         return (
             self.db.query(Vendor)
-            .filter(Vendor.id.not_in(vendors_with_rules))
+            .filter(
+                Vendor.id.not_in(vendors_with_rules),
+                Vendor.id.not_in(vendors_with_pending),
+            )
             .order_by(Vendor.created_at.desc())
             .limit(limit)
             .all()

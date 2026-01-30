@@ -395,6 +395,7 @@ Guidelines:
         self,
         question: str,
         allowed_queries: list[dict[str, Any]],
+        data_range: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """
         Generate a structured query plan for a user question.
@@ -402,11 +403,15 @@ Guidelines:
         Args:
             question: User's question about their spending
             allowed_queries: List of allowed query types with parameters
+            data_range: Optional dict with 'earliest' and 'latest' transaction dates
 
         Returns:
             Query plan with query type and parameters
         """
+        from datetime import date
+
         queries_desc = json.dumps(allowed_queries, indent=2)
+        today = date.today().isoformat()
 
         schema = {
             "type": "object",
@@ -418,14 +423,21 @@ Guidelines:
             "required": ["query_type", "parameters", "explanation"],
         }
 
+        data_context = ""
+        if data_range:
+            data_context = f"\nAvailable data range: {data_range.get('earliest', 'unknown')} to {data_range.get('latest', 'unknown')}"
+
         prompt = f"""Convert this user question into a structured query plan.
+
+Today's date: {today}{data_context}
 
 User question: {question}
 
 Available query types:
 {queries_desc}
 
-Choose the most appropriate query type and fill in the parameters to answer the user's question."""
+Choose the most appropriate query type and fill in the parameters to answer the user's question.
+When no specific date is mentioned, use reasonable defaults based on the question context (e.g., "last month" means the previous calendar month, "this year" means {today[:4]})."""
 
         system = """You are a query planning assistant. Convert natural language questions about spending into structured database queries.
 

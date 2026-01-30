@@ -206,10 +206,28 @@ class ChatService:
                 "error": str(e),
             }
 
+    def _get_data_range(self) -> dict[str, str] | None:
+        """Get the date range of available transaction data."""
+        try:
+            result = self.db.query(
+                func.min(TransactionGroup.occurred_at),
+                func.max(TransactionGroup.occurred_at),
+            ).filter(TransactionGroup.status == TransactionStatus.POSTED).first()
+
+            if result and result[0] and result[1]:
+                return {
+                    "earliest": result[0].date().isoformat(),
+                    "latest": result[1].date().isoformat(),
+                }
+        except Exception as e:
+            logger.warning(f"Failed to get data range: {e}")
+        return None
+
     def _generate_query_plan(self, question: str) -> dict[str, Any] | None:
         """Generate a query plan from natural language."""
         try:
-            return self.ollama.generate_query_plan(question, ALLOWED_QUERIES)
+            data_range = self._get_data_range()
+            return self.ollama.generate_query_plan(question, ALLOWED_QUERIES, data_range)
         except OllamaError as e:
             logger.warning(f"Failed to generate query plan: {e}")
             return None
