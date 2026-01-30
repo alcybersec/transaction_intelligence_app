@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     # Ollama (optional)
     ollama_base_url: str | None = None
     ollama_model: str = "llama3"
+    ollama_timeout: float = 180.0  # seconds, increase for slow/remote Ollama
 
     # Logging
     log_format: str = "console"  # "json" for production, "console" for development

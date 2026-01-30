@@ -41,7 +41,7 @@ class OllamaService:
         self,
         base_url: str | None = None,
         model: str | None = None,
-        timeout: float = 60.0,
+        timeout: float | None = None,
     ):
         """
         Initialize Ollama service.
@@ -49,11 +49,11 @@ class OllamaService:
         Args:
             base_url: Ollama API base URL (defaults to settings)
             model: Model name to use (defaults to settings)
-            timeout: Request timeout in seconds
+            timeout: Request timeout in seconds (defaults to settings)
         """
         self.base_url = (base_url or settings.ollama_base_url or "").rstrip("/")
         self.model = model or settings.ollama_model or "llama3"
-        self.timeout = timeout
+        self.timeout = timeout or settings.ollama_timeout
         self._client: httpx.Client | None = None
 
     @property
