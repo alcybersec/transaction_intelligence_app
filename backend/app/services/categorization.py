@@ -443,13 +443,17 @@ class CategorizationService:
                 for t in transactions
             ]
 
-            # Call Ollama (thread-safe, uses its own HTTP client)
-            ollama = get_ollama_service()
-            result = ollama.suggest_category(
-                vendor_name=vendor_name,
-                categories=categories_list,
-                transaction_history=history if history else None,
-            )
+            # Call Ollama with a fresh client for this thread
+            from app.services.ollama import OllamaService
+            ollama = OllamaService()  # Fresh instance with its own HTTP client
+            try:
+                result = ollama.suggest_category(
+                    vendor_name=vendor_name,
+                    categories=categories_list,
+                    transaction_history=history if history else None,
+                )
+            finally:
+                ollama.close()  # Clean up HTTP client
 
             # Validate result
             suggested_category_id = result.get("category_id")
