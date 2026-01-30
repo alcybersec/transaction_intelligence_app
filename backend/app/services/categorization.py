@@ -1,5 +1,6 @@
 """AI-powered categorization service for vendors."""
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from uuid import UUID
 
@@ -18,6 +19,9 @@ from app.db.models import (
 from app.services.ollama import OllamaError, get_ollama_service
 
 logger = get_logger(__name__)
+
+# Number of concurrent Ollama requests for batch processing
+BATCH_CONCURRENCY = 6
 
 
 class CategorizationService:
@@ -351,14 +355,16 @@ class CategorizationService:
         vendor_ids: list[UUID] | None = None,
         max_vendors: int = 10,
         process_all: bool = False,
+        concurrency: int = BATCH_CONCURRENCY,
     ) -> dict[str, int]:
         """
-        Generate suggestions for multiple vendors.
+        Generate suggestions for multiple vendors using parallel processing.
 
         Args:
             vendor_ids: Optional list of specific vendors
             max_vendors: Batch size (vendors per iteration)
             process_all: If True, iterate through ALL uncategorized vendors
+            concurrency: Number of parallel Ollama requests (default: 6)
 
         Returns:
             Statistics dict with success/failure counts
@@ -371,45 +377,149 @@ class CategorizationService:
                 .filter(Vendor.id.in_(vendor_ids))
                 .all()
             )
-            self._process_vendor_batch(vendors, stats)
+            self._process_vendor_batch_parallel(vendors, stats, concurrency)
         elif process_all:
             # Process all uncategorized vendors in batches
             while True:
                 vendors = self.get_uncategorized_vendors(limit=max_vendors)
                 if not vendors:
                     break
-                self._process_vendor_batch(vendors, stats)
+                self._process_vendor_batch_parallel(vendors, stats, concurrency)
         else:
             vendors = self.get_uncategorized_vendors(limit=max_vendors)
-            self._process_vendor_batch(vendors, stats)
+            self._process_vendor_batch_parallel(vendors, stats, concurrency)
 
         return stats
 
-    def _process_vendor_batch(
-        self,
-        vendors: list[Vendor],
-        stats: dict[str, int],
-    ) -> None:
-        """Process a batch of vendors for category suggestions."""
-        for vendor in vendors:
-            stats["processed"] += 1
+    def _process_single_vendor(self, vendor_id: UUID, vendor_name: str) -> dict:
+        """
+        Process a single vendor in a thread-safe way.
 
-            # Skip if already has a pending suggestion
+        Returns dict with result status and any created suggestion.
+        """
+        from app.db.session import SessionLocal
+
+        # Create a new session for this thread
+        db = SessionLocal()
+        try:
+            # Check if already has a pending suggestion
             existing = (
-                self.db.query(CategorySuggestion)
+                db.query(CategorySuggestion)
                 .filter(
-                    CategorySuggestion.vendor_id == vendor.id,
+                    CategorySuggestion.vendor_id == vendor_id,
                     CategorySuggestion.status == "pending",
                 )
                 .first()
             )
             if existing:
-                stats["skipped"] += 1
-                continue
+                return {"status": "skipped", "vendor_id": vendor_id}
 
-            # Generate suggestion
-            suggestion = self.suggest_category(vendor.id)
-            if suggestion:
-                stats["success"] += 1
-            else:
-                stats["failed"] += 1
+            # Get categories for AI prompt
+            categories = (
+                db.query(Category)
+                .order_by(Category.sort_order, Category.name)
+                .all()
+            )
+            categories_list = [{"id": str(c.id), "name": c.name} for c in categories]
+
+            if not categories_list:
+                return {"status": "failed", "vendor_id": vendor_id, "error": "No categories"}
+
+            # Get transaction history
+            transactions = (
+                db.query(TransactionGroup)
+                .filter(TransactionGroup.vendor_id == vendor_id)
+                .order_by(TransactionGroup.occurred_at.desc())
+                .limit(5)
+                .all()
+            )
+            history = [
+                {
+                    "amount": float(t.amount),
+                    "currency": t.currency,
+                    "date": t.occurred_at.isoformat() if t.occurred_at else None,
+                    "direction": t.direction.value if t.direction else "debit",
+                }
+                for t in transactions
+            ]
+
+            # Call Ollama (thread-safe, uses its own HTTP client)
+            ollama = get_ollama_service()
+            result = ollama.suggest_category(
+                vendor_name=vendor_name,
+                categories=categories_list,
+                transaction_history=history if history else None,
+            )
+
+            # Validate result
+            suggested_category_id = result.get("category_id")
+            if not suggested_category_id:
+                return {"status": "failed", "vendor_id": vendor_id, "error": "No category_id"}
+
+            category = db.query(Category).filter(Category.id == suggested_category_id).first()
+            if not category:
+                return {"status": "failed", "vendor_id": vendor_id, "error": "Invalid category"}
+
+            # Create suggestion record
+            suggestion = CategorySuggestion(
+                vendor_id=vendor_id,
+                suggested_category_id=category.id,
+                model=ollama.model,
+                confidence=result.get("confidence", 0.5),
+                rationale=result.get("rationale", ""),
+                status="pending",
+            )
+
+            # Mark existing pending as superseded
+            db.query(CategorySuggestion).filter(
+                CategorySuggestion.vendor_id == vendor_id,
+                CategorySuggestion.status == "pending",
+            ).update({"status": "rejected", "updated_at": datetime.utcnow()})
+
+            db.add(suggestion)
+            db.commit()
+
+            logger.info(f"Generated suggestion for {vendor_name}: {category.name}")
+            return {"status": "success", "vendor_id": vendor_id}
+
+        except OllamaError as e:
+            logger.error(f"Ollama error for vendor {vendor_id}: {e}")
+            return {"status": "failed", "vendor_id": vendor_id, "error": str(e)}
+        except Exception as e:
+            logger.exception(f"Error processing vendor {vendor_id}: {e}")
+            return {"status": "failed", "vendor_id": vendor_id, "error": str(e)}
+        finally:
+            db.close()
+
+    def _process_vendor_batch_parallel(
+        self,
+        vendors: list[Vendor],
+        stats: dict[str, int],
+        concurrency: int,
+    ) -> None:
+        """Process a batch of vendors using parallel workers."""
+        # Extract vendor info before threading (avoid session issues)
+        vendor_tasks = [(v.id, v.canonical_name) for v in vendors]
+
+        with ThreadPoolExecutor(max_workers=concurrency) as executor:
+            # Submit all tasks
+            futures = {
+                executor.submit(self._process_single_vendor, vid, vname): vid
+                for vid, vname in vendor_tasks
+            }
+
+            # Collect results as they complete
+            for future in as_completed(futures):
+                stats["processed"] += 1
+                try:
+                    result = future.result()
+                    status = result.get("status", "failed")
+                    if status == "success":
+                        stats["success"] += 1
+                    elif status == "skipped":
+                        stats["skipped"] += 1
+                    else:
+                        stats["failed"] += 1
+                except Exception as e:
+                    logger.exception(f"Future failed: {e}")
+                    stats["failed"] += 1

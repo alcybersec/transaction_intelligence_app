@@ -85,7 +85,7 @@ class SuggestionActionResponse(BaseModel):
 class ChatRequest(BaseModel):
     """Request for AI chat."""
 
-    question: str = Field(..., min_length=3, max_length=500)
+    question: str = Field(..., min_length=1, max_length=500)
     wallet_id: UUID | None = Field(default=None, description="Optional wallet context")
 
 
@@ -154,6 +154,7 @@ class BatchSuggestRequest(BaseModel):
     )
     max_vendors: int = Field(default=10, ge=1, le=50, description="Batch size per iteration")
     process_all: bool = Field(default=True, description="Process ALL uncategorized vendors (in batches)")
+    concurrency: int = Field(default=6, ge=1, le=12, description="Number of parallel Ollama requests")
 
 
 class BatchSuggestResponse(BaseModel):

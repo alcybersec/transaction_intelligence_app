@@ -171,6 +171,7 @@ def batch_generate_suggestions(
         vendor_ids=request.vendor_ids,
         max_vendors=request.max_vendors,
         process_all=request.process_all,
+        concurrency=request.concurrency,
     )
 
     return BatchSuggestResponse(**stats)
