@@ -42,6 +42,7 @@ class OllamaService:
         base_url: str | None = None,
         model: str | None = None,
         timeout: float | None = None,
+        num_thread: int | None = None,
     ):
         """
         Initialize Ollama service.
@@ -50,10 +51,12 @@ class OllamaService:
             base_url: Ollama API base URL (defaults to settings)
             model: Model name to use (defaults to settings)
             timeout: Request timeout in seconds (defaults to settings)
+            num_thread: Number of CPU threads for inference (defaults to settings)
         """
         self.base_url = (base_url or settings.ollama_base_url or "").rstrip("/")
         self.model = model or settings.ollama_model or "llama3"
         self.timeout = timeout or settings.ollama_timeout
+        self.num_thread = num_thread or settings.ollama_num_thread
         self._client: httpx.Client | None = None
 
     @property
@@ -135,13 +138,18 @@ class OllamaService:
             raise OllamaError("Ollama is not configured")
 
         client = self._get_client()
+        options = {
+            "temperature": temperature,
+        }
+        # Add num_thread if configured (critical for remote Ollama instances)
+        if self.num_thread:
+            options["num_thread"] = self.num_thread
+
         payload = {
             "model": model or self.model,
             "prompt": prompt,
             "stream": False,
-            "options": {
-                "temperature": temperature,
-            },
+            "options": options,
         }
 
         if system:
