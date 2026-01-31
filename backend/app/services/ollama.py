@@ -435,25 +435,37 @@ Guidelines:
         if data_range:
             data_context = f"\nAvailable data range: {data_range.get('earliest', 'unknown')} to {data_range.get('latest', 'unknown')}"
 
+        # Calculate last month for reference
+        from datetime import timedelta
+        today_date = date.today()
+        first_of_this_month = today_date.replace(day=1)
+        last_month_end = first_of_this_month - timedelta(days=1)
+        last_month_start = last_month_end.replace(day=1)
+
         prompt = f"""Convert this user question into a structured query plan.
 
-Today's date: {today}{data_context}
+Today's date: {today}
+Last month: {last_month_start.isoformat()} to {last_month_end.isoformat()}{data_context}
 
 User question: {question}
 
 Available query types:
 {queries_desc}
 
-Choose the most appropriate query type and fill in the parameters to answer the user's question.
-When no specific date is mentioned, use reasonable defaults based on the question context (e.g., "last month" means the previous calendar month, "this year" means {today[:4]})."""
+IMPORTANT RULES:
+- If the question mentions a specific vendor/merchant name (like "uber", "amazon", "starbucks", "hala"), use "vendor_spending" query type with that vendor_name
+- "last month" means {last_month_start.isoformat()} to {last_month_end.isoformat()} (the PREVIOUS calendar month, NOT the current month)
+- "this month" means {first_of_this_month.isoformat()} to {today}
+
+Choose the most appropriate query type and fill in the parameters."""
 
         system = """You are a query planning assistant. Convert natural language questions about spending into structured database queries.
 
 Rules:
-1. Choose the most specific query type that answers the question
-2. Extract time periods, categories, vendors, amounts from the question
-3. Use ISO date formats (YYYY-MM-DD)
-4. Be conservative - only query what's needed"""
+1. If a vendor/merchant name is mentioned, ALWAYS use vendor_spending query type
+2. Use exact ISO date formats (YYYY-MM-DD)
+3. "last month" = previous calendar month, NOT current month
+4. Be precise with dates and vendor names"""
 
         return self.generate_json(
             prompt=prompt,
