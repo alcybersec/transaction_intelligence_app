@@ -507,12 +507,17 @@ class ChatService:
         """Query spending at a specific vendor."""
         vendor_name = params.get("vendor_name", "")
 
-        # Find matching vendor
-        vendor = (
-            self.db.query(Vendor)
+        # Find matching vendors, ordered by transaction count (most active first)
+        matching_vendors = (
+            self.db.query(Vendor, func.count(TransactionGroup.id).label("txn_count"))
+            .outerjoin(TransactionGroup, TransactionGroup.vendor_id == Vendor.id)
             .filter(Vendor.canonical_name.ilike(f"%{vendor_name}%"))
-            .first()
+            .group_by(Vendor.id)
+            .order_by(func.count(TransactionGroup.id).desc())
+            .all()
         )
+
+        vendor = matching_vendors[0][0] if matching_vendors else None
 
         if not vendor:
             return {
