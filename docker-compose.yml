@@ -41,6 +41,8 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-encryption-key-change-me}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-180}
+      OLLAMA_NUM_THREAD: ${OLLAMA_NUM_THREAD:-}
     ports:
       - "${API_PORT:-8001}:8000"
     volumes:
