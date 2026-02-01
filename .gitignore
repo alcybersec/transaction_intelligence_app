@@ -73,3 +73,5 @@ secrets/
 
 # Backups (contain sensitive data)
 backups/
+
+CLAUDE.md

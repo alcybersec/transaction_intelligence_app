@@ -325,11 +325,30 @@ class CategorizationService:
 
     def get_uncategorized_vendors(self, limit: int = 50) -> list[Vendor]:
         """Get vendors without category rules or pending suggestions."""
+        # Count totals for debugging
+        total_vendors = self.db.query(func.count(Vendor.id)).scalar()
+        vendors_with_rules_count = (
+            self.db.query(func.count(func.distinct(VendorCategoryRule.vendor_id)))
+            .filter(VendorCategoryRule.enabled == True)
+            .scalar()
+        )
+        vendors_with_pending_count = (
+            self.db.query(func.count(func.distinct(CategorySuggestion.vendor_id)))
+            .filter(CategorySuggestion.status == "pending")
+            .scalar()
+        )
+
+        logger.info(
+            f"Uncategorized vendors check: total={total_vendors}, "
+            f"with_rules={vendors_with_rules_count}, with_pending={vendors_with_pending_count}"
+        )
+
         # Subquery for vendors with rules
         vendors_with_rules = (
             self.db.query(VendorCategoryRule.vendor_id)
             .filter(VendorCategoryRule.enabled == True)
             .distinct()
+            .subquery()
         )
 
         # Subquery for vendors with pending suggestions
@@ -337,18 +356,22 @@ class CategorizationService:
             self.db.query(CategorySuggestion.vendor_id)
             .filter(CategorySuggestion.status == "pending")
             .distinct()
+            .subquery()
         )
 
-        return (
+        vendors = (
             self.db.query(Vendor)
             .filter(
-                Vendor.id.not_in(vendors_with_rules),
-                Vendor.id.not_in(vendors_with_pending),
+                Vendor.id.not_in(self.db.query(vendors_with_rules)),
+                Vendor.id.not_in(self.db.query(vendors_with_pending)),
             )
             .order_by(Vendor.created_at.desc())
             .limit(limit)
             .all()
         )
+
+        logger.info(f"Found {len(vendors)} uncategorized vendors")
+        return vendors
 
     def batch_suggest_categories(
         self,
