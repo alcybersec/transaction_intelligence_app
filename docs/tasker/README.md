@@ -2,6 +2,52 @@
 
 This guide explains how to configure Tasker on your Android device to forward banking SMS messages to the Transaction Intelligence App.
 
+---
+
+## Quick Setup (Recommended)
+
+**Import the pre-configured project file - done in 2 minutes.**
+
+### 1. Download the Project File
+
+Transfer `TxnIngest.prj.xml` from this folder to your phone, or download from your server.
+
+### 2. Import into Tasker
+
+1. Open **Tasker**
+2. Long-press the **home icon** (bottom left) → **Import Project**
+3. Select `TxnIngest.prj.xml`
+
+### 3. Configure 3 Variables
+
+Go to the **TxnIngest** project → **Vars** tab and update:
+
+| Variable | Set To |
+|----------|--------|
+| `%TXN_API_URL` | `http://YOUR_SERVER_IP:8001` |
+| `%TXN_DEVICE_ID` | Unique name (e.g., `pixel7-alex`) |
+| `%TXN_HMAC_SECRET` | Value from `.env` (`INGESTION_HMAC_SECRET`) |
+
+### 4. Customize Bank Senders (Optional)
+
+Default regex: `MASHREQ|NEO|ADCB|FAB|ENBD|RAKBANK|CBD|DIB`
+
+To change: **Profiles** → **Bank SMS Received** → **Received Text** → edit **Sender**
+
+### 5. Enable & Test
+
+- Ensure the project is enabled (not greyed out)
+- Send yourself a test SMS from a matching sender
+- Check server logs: `docker compose logs api --tail=10`
+
+**That's it!** The project includes online sending, offline queuing, and auto-sync.
+
+---
+
+## Manual Setup
+
+If you prefer to create the tasks yourself, follow the detailed guide below.
+
 ## Overview
 
 The Tasker integration provides:
