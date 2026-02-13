@@ -8,17 +8,7 @@ A self-hosted app that ingests SMS (via Android Tasker) and email (via Proton Ma
 
 **Your financial data stays on your hardware. No cloud. No third-party access.**
 
-![Dashboard](docs/images/dashboard.png)
-
-<details>
-<summary>More screenshots</summary>
-
-![Transactions](docs/images/transactions.png)
-![AI Chat](docs/images/ai-chat.png)
-
-</details>
-
-<video src="https://github.com/alcybersec/transaction_intelligence_app/releases/download/v1.0.0/Screencast.From.2026-02-13.13-26-14.mp4" controls width="600"></video>
+[![Demo Video](https://img.shields.io/badge/Demo-Watch%20Video-red?logo=github)](https://github.com/alcybersec/transaction_intelligence_app/releases/download/v1.0.0/Screencast.From.2026-02-13.13-26-14.mp4)
 
 ### Highlights
 
