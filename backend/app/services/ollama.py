@@ -468,21 +468,23 @@ Available query types:
 {queries_desc}
 
 IMPORTANT RULES:
-- If the question mentions a specific vendor/merchant name (like "uber", "amazon", "starbucks", "hala"), use "vendor_spending" query type with that vendor_name
 - "last month" means {last_month_start.isoformat()} to {last_month_end.isoformat()} (the PREVIOUS calendar month, NOT the current month)
 - "this month" means {first_of_this_month.isoformat()} to {today}
-- If the user's question is a follow-up (e.g. "divide it by months", "break it down", "show me more"), use the conversation history to understand what they're referring to and preserve relevant filters (vendor, category, date range) from the previous query
+- If the user asks to "divide by months/weeks/days", "break it down", "show trend", or "show by month" — use "spending_trend" with the appropriate granularity. If a vendor was mentioned (in the current question OR conversation history), include vendor_name in the parameters.
+- If the question asks about total spending at a specific vendor (e.g. "how much at uber?"), use "vendor_spending"
+- If the user's question is a follow-up (e.g. "divide it by months", "break it down", "show me more", "what about last month?"), use the conversation history to understand what they're referring to and preserve relevant filters (vendor, category, date range) from the previous query
 
 Choose the most appropriate query type and fill in the parameters."""
 
         system = """You are a query planning assistant. Convert natural language questions about spending into structured database queries.
 
 Rules:
-1. If a vendor/merchant name is mentioned, ALWAYS use vendor_spending query type
-2. Use exact ISO date formats (YYYY-MM-DD)
-3. "last month" = previous calendar month, NOT current month
-4. Be precise with dates and vendor names
-5. For follow-up questions, use conversation history to resolve references like "it", "that", "those" and preserve context from prior questions"""
+1. Use exact ISO date formats (YYYY-MM-DD)
+2. "last month" = previous calendar month, NOT current month
+3. Be precise with dates and vendor names
+4. For follow-up questions, use conversation history to resolve references like "it", "that", "those" and preserve context (vendor, category, dates) from prior questions
+5. When the user asks for a breakdown by time period (months, weeks, days), use "spending_trend" — NOT "vendor_spending" — even if a vendor is involved. Pass the vendor_name in parameters.
+6. Only use "vendor_spending" when the user wants a single total for a vendor, not a time-based breakdown"""
 
         return self.generate_json(
             prompt=prompt,
