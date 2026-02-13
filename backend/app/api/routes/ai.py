@@ -265,7 +265,15 @@ def chat(
             error="ollama_not_configured",
         )
 
-    result = service.ask(request.question, wallet_id=request.wallet_id)
+    history = [
+        {"role": m.role, "content": m.content}
+        for m in request.conversation_history[-10:]  # Last 5 exchanges max
+    ]
+    result = service.ask(
+        request.question,
+        wallet_id=request.wallet_id,
+        conversation_history=history if history else None,
+    )
 
     return ChatResponse(
         answer=result.get("answer", ""),

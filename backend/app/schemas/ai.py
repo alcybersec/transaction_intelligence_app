@@ -82,11 +82,21 @@ class SuggestionActionResponse(BaseModel):
 # === AI Chat ===
 
 
+class ChatMessage(BaseModel):
+    """A single message in conversation history."""
+
+    role: str = Field(..., description="'user' or 'assistant'")
+    content: str
+
+
 class ChatRequest(BaseModel):
     """Request for AI chat."""
 
     question: str = Field(..., min_length=1, max_length=500)
     wallet_id: UUID | None = Field(default=None, description="Optional wallet context")
+    conversation_history: list[ChatMessage] = Field(
+        default_factory=list, description="Recent conversation history for context"
+    )
 
 
 class ChatQueryInfo(BaseModel):

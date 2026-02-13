@@ -404,6 +404,7 @@ Guidelines:
         question: str,
         allowed_queries: list[dict[str, Any]],
         data_range: dict[str, str] | None = None,
+        conversation_history: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         """
         Generate a structured query plan for a user question.
@@ -412,6 +413,7 @@ Guidelines:
             question: User's question about their spending
             allowed_queries: List of allowed query types with parameters
             data_range: Optional dict with 'earliest' and 'latest' transaction dates
+            conversation_history: Recent conversation exchanges for follow-up context
 
         Returns:
             Query plan with query type and parameters
@@ -435,6 +437,19 @@ Guidelines:
         if data_range:
             data_context = f"\nAvailable data range: {data_range.get('earliest', 'unknown')} to {data_range.get('latest', 'unknown')}"
 
+        # Build conversation context from history
+        history_context = ""
+        if conversation_history:
+            history_lines = []
+            for msg in conversation_history:
+                role = "User" if msg.get("role") == "user" else "Assistant"
+                history_lines.append(f"{role}: {msg.get('content', '')}")
+            history_context = (
+                "\n\nConversation history (use this to understand follow-up questions):\n"
+                + "\n".join(history_lines)
+                + "\n"
+            )
+
         # Calculate last month for reference
         from datetime import timedelta
         today_date = date.today()
@@ -445,7 +460,7 @@ Guidelines:
         prompt = f"""Convert this user question into a structured query plan.
 
 Today's date: {today}
-Last month: {last_month_start.isoformat()} to {last_month_end.isoformat()}{data_context}
+Last month: {last_month_start.isoformat()} to {last_month_end.isoformat()}{data_context}{history_context}
 
 User question: {question}
 
@@ -456,6 +471,7 @@ IMPORTANT RULES:
 - If the question mentions a specific vendor/merchant name (like "uber", "amazon", "starbucks", "hala"), use "vendor_spending" query type with that vendor_name
 - "last month" means {last_month_start.isoformat()} to {last_month_end.isoformat()} (the PREVIOUS calendar month, NOT the current month)
 - "this month" means {first_of_this_month.isoformat()} to {today}
+- If the user's question is a follow-up (e.g. "divide it by months", "break it down", "show me more"), use the conversation history to understand what they're referring to and preserve relevant filters (vendor, category, date range) from the previous query
 
 Choose the most appropriate query type and fill in the parameters."""
 
@@ -465,7 +481,8 @@ Rules:
 1. If a vendor/merchant name is mentioned, ALWAYS use vendor_spending query type
 2. Use exact ISO date formats (YYYY-MM-DD)
 3. "last month" = previous calendar month, NOT current month
-4. Be precise with dates and vendor names"""
+4. Be precise with dates and vendor names
+5. For follow-up questions, use conversation history to resolve references like "it", "that", "those" and preserve context from prior questions"""
 
         return self.generate_json(
             prompt=prompt,

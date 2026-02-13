@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Send, Bot, User, AlertCircle, Loader2, Info, Sparkles } from 'lucide-react'
-import { sendChatMessage, fetchOllamaStatus, ChatResponse } from '../api/ai'
+import { sendChatMessage, fetchOllamaStatus, ChatResponse, ChatHistoryMessage } from '../api/ai'
 
 interface Message {
   id: string
@@ -30,9 +30,18 @@ export function Chat() {
     refetchInterval: 60000, // Check every minute
   })
 
+  // Build conversation history from current messages
+  const getConversationHistory = (): ChatHistoryMessage[] => {
+    return messages.slice(-10).map((m) => ({
+      role: m.role,
+      content: m.content,
+    }))
+  }
+
   // Send message mutation
   const sendMessage = useMutation({
-    mutationFn: (question: string) => sendChatMessage(question),
+    mutationFn: (question: string) =>
+      sendChatMessage(question, undefined, getConversationHistory()),
     onSuccess: (response: ChatResponse, question: string) => {
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,

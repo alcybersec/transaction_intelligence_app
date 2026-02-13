@@ -75,12 +75,13 @@ ALLOWED_QUERIES = [
     },
     {
         "type": "spending_trend",
-        "description": "Get daily/weekly/monthly spending trend",
+        "description": "Get daily/weekly/monthly spending trend, optionally filtered by vendor",
         "parameters": {
             "period_start": "ISO date (YYYY-MM-DD)",
             "period_end": "ISO date (YYYY-MM-DD)",
             "granularity": "day, week, or month",
             "category_id": "Optional category UUID",
+            "vendor_name": "Optional vendor name to filter by",
         },
     },
     {
@@ -141,13 +142,19 @@ class ChatService:
         """Check if chat service is available."""
         return self.ollama.is_configured
 
-    def ask(self, question: str, wallet_id: UUID | None = None) -> dict[str, Any]:
+    def ask(
+        self,
+        question: str,
+        wallet_id: UUID | None = None,
+        conversation_history: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
         """
         Answer a user question about their spending.
 
         Args:
             question: Natural language question
             wallet_id: Optional wallet context
+            conversation_history: Recent conversation history for follow-up context
 
         Returns:
             Dict with answer, highlights, chart suggestion, and query metadata
@@ -160,7 +167,7 @@ class ChatService:
 
         try:
             # Step 1: Generate query plan from question
-            query_plan = self._generate_query_plan(question)
+            query_plan = self._generate_query_plan(question, conversation_history)
 
             if not query_plan:
                 return {
@@ -223,11 +230,17 @@ class ChatService:
             logger.warning(f"Failed to get data range: {e}")
         return None
 
-    def _generate_query_plan(self, question: str) -> dict[str, Any] | None:
+    def _generate_query_plan(
+        self,
+        question: str,
+        conversation_history: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any] | None:
         """Generate a query plan from natural language."""
         try:
             data_range = self._get_data_range()
-            return self.ollama.generate_query_plan(question, ALLOWED_QUERIES, data_range)
+            return self.ollama.generate_query_plan(
+                question, ALLOWED_QUERIES, data_range, conversation_history
+            )
         except OllamaError as e:
             logger.warning(f"Failed to generate query plan: {e}")
             return None
@@ -589,6 +602,21 @@ class ChatService:
         if category_id:
             query = query.filter(TransactionGroup.category_id == category_id)
 
+        # Filter by vendor if specified
+        vendor_name = params.get("vendor_name")
+        if vendor_name:
+            matching_vendors = (
+                self.db.query(Vendor, func.count(TransactionGroup.id).label("txn_count"))
+                .outerjoin(TransactionGroup, TransactionGroup.vendor_id == Vendor.id)
+                .filter(Vendor.canonical_name.ilike(f"%{vendor_name}%"))
+                .group_by(Vendor.id)
+                .order_by(func.count(TransactionGroup.id).desc())
+                .all()
+            )
+            vendor = matching_vendors[0][0] if matching_vendors else None
+            if vendor:
+                query = query.filter(TransactionGroup.vendor_id == vendor.id)
+
         results = query.all()
 
         trend = [
@@ -600,13 +628,18 @@ class ChatService:
             for r in results
         ]
 
-        return {
+        result = {
             "trend": trend,
             "granularity": granularity,
             "currency": "AED",
             "period_start": period_start.isoformat(),
             "period_end": period_end.isoformat(),
         }
+        if vendor_name:
+            result["vendor"] = (
+                vendor.canonical_name if (matching_vendors and vendor) else vendor_name
+            )
+        return result
 
     def _query_transaction_count(
         self,

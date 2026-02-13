@@ -184,14 +184,24 @@ export async function rejectSuggestion(
 
 // === Chat ===
 
+export interface ChatHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export async function sendChatMessage(
   question: string,
-  walletId?: string
+  walletId?: string,
+  conversationHistory?: ChatHistoryMessage[]
 ): Promise<ChatResponse> {
   const res = await authFetch(`${API_URL}/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, wallet_id: walletId }),
+    body: JSON.stringify({
+      question,
+      wallet_id: walletId,
+      conversation_history: conversationHistory || [],
+    }),
   })
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: 'Failed to send chat message' }))
