@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # IP Allowlist (optional security layer)
     allowed_ip_ranges: str | None = None  # e.g., "192.168.1.0/24,100.64.0.0/10"
 
+    # CORS extra origins (comma-separated, appended to defaults)
+    cors_origins: str | None = None
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

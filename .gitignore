@@ -76,3 +76,7 @@ secrets/
 backups/
 
 CLAUDE.md
+
+# Core dumps
+core.*
+*.core

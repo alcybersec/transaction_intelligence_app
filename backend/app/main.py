@@ -20,14 +20,18 @@ app = FastAPI(
 )
 
 # CORS middleware for frontend
+_default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+_extra = [o.strip() for o in (settings.cors_origins or "").split(",") if o.strip()]
+_all_origins = _default_origins + _extra
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=_all_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

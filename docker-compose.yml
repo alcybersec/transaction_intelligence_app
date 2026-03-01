@@ -43,6 +43,7 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
       OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-180}
       OLLAMA_NUM_THREAD: ${OLLAMA_NUM_THREAD:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
     ports:
       - "${API_PORT:-8001}:8000"
     volumes:
@@ -52,7 +53,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-1}
 
   worker:
     build:
@@ -70,6 +71,10 @@ services:
       IMAP_USER: ${IMAP_USER:-}
       IMAP_PASSWORD: ${IMAP_PASSWORD:-}
       API_PORT: ${API_PORT:-8003}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-180}
+      OLLAMA_NUM_THREAD: ${OLLAMA_NUM_THREAD:-}
     volumes:
       - ./worker:/app
     depends_on:
@@ -77,8 +82,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   frontend:
     build:
@@ -92,6 +95,7 @@ services:
       - /app/node_modules
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:8001}
+      VITE_ALLOWED_HOSTS: ${VITE_ALLOWED_HOSTS:-}
     depends_on:
       - api
 
