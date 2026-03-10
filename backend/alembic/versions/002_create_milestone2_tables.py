@@ -20,7 +20,9 @@ depends_on: str | Sequence[str] | None = None
 
 # Define enum types
 instrumenttype = postgresql.ENUM("card", "account", name="instrumenttype", create_type=False)
-transactiondirection = postgresql.ENUM("debit", "credit", name="transactiondirection", create_type=False)
+transactiondirection = postgresql.ENUM(
+    "debit", "credit", name="transactiondirection", create_type=False
+)
 transactionstatus = postgresql.ENUM(
     "posted", "reversed", "refunded", "unknown", name="transactionstatus", create_type=False
 )
@@ -126,7 +128,9 @@ def upgrade() -> None:
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
-    op.create_unique_constraint("uq_wallet_instrument", "wallet_instruments", ["wallet_id", "instrument_id"])
+    op.create_unique_constraint(
+        "uq_wallet_instrument", "wallet_instruments", ["wallet_id", "instrument_id"]
+    )
     op.create_index("ix_wallet_instruments_wallet", "wallet_instruments", ["wallet_id"])
     op.create_index("ix_wallet_instruments_instrument", "wallet_instruments", ["instrument_id"])
 
@@ -183,7 +187,9 @@ def upgrade() -> None:
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
-    op.create_unique_constraint("uq_vendor_alias_normalized", "vendor_aliases", ["alias_normalized"])
+    op.create_unique_constraint(
+        "uq_vendor_alias_normalized", "vendor_aliases", ["alias_normalized"]
+    )
     op.create_index("ix_vendor_aliases_vendor", "vendor_aliases", ["vendor_id"])
     op.create_index("ix_vendor_aliases_normalized", "vendor_aliases", ["alias_normalized"])
 
@@ -360,7 +366,9 @@ def upgrade() -> None:
     op.create_unique_constraint(
         "uq_transaction_evidence", "transaction_evidence", ["transaction_group_id", "message_id"]
     )
-    op.create_index("ix_transaction_evidence_group", "transaction_evidence", ["transaction_group_id"])
+    op.create_index(
+        "ix_transaction_evidence_group", "transaction_evidence", ["transaction_group_id"]
+    )
     op.create_index("ix_transaction_evidence_message", "transaction_evidence", ["message_id"])
 
     # Seed default categories

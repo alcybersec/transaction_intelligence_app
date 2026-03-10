@@ -2,25 +2,17 @@
 
 import io
 from datetime import date, datetime
-from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.logging import get_logger
 from app.db.models import (
-    Category,
     Report,
     ReportGeneratedBy,
-    TransactionDirection,
-    TransactionGroup,
-    TransactionStatus,
-    Vendor,
     Wallet,
 )
 from app.schemas.report import (
-    ReportDetailResponse,
     ReportGenerateRequest,
     ReportListResponse,
     ReportResponse,
@@ -226,7 +218,9 @@ class ReportService:
                     "change_percentage": analytics.monthly_comparison.change_percentage,
                 }
 
-            period_desc = f"{period_start.strftime('%B %d, %Y')} to {period_end.strftime('%B %d, %Y')}"
+            period_desc = (
+                f"{period_start.strftime('%B %d, %Y')} to {period_end.strftime('%B %d, %Y')}"
+            )
 
             insights = ollama.generate_report_insights(analytics_data, period_desc)
             return insights, ollama.model
@@ -277,9 +271,11 @@ class ReportService:
         lines = []
 
         # Header
-        lines.append(f"# Financial Report")
+        lines.append("# Financial Report")
         lines.append("")
-        lines.append(f"**Period:** {period_start.strftime('%B %d, %Y')} - {period_end.strftime('%B %d, %Y')}")
+        lines.append(
+            f"**Period:** {period_start.strftime('%B %d, %Y')} - {period_end.strftime('%B %d, %Y')}"
+        )
         lines.append(f"**Wallet:** {wallet_name}")
         lines.append(f"**Generated:** {datetime.utcnow().strftime('%B %d, %Y at %H:%M UTC')}")
         lines.append("")
@@ -288,7 +284,9 @@ class ReportService:
         lines.append("## Summary")
         lines.append("")
         if analytics.total_balance is not None:
-            lines.append(f"- **Current Balance:** {analytics.currency} {analytics.total_balance:,.2f}")
+            lines.append(
+                f"- **Current Balance:** {analytics.currency} {analytics.total_balance:,.2f}"
+            )
         lines.append(f"- **Total Spending:** {analytics.currency} {analytics.total_spending:,.2f}")
         lines.append(f"- **Total Income:** {analytics.currency} {analytics.total_income:,.2f}")
         lines.append(f"- **Net Change:** {analytics.currency} {analytics.net_change:,.2f}")
@@ -300,8 +298,12 @@ class ReportService:
             mc = analytics.monthly_comparison
             lines.append("### Month-over-Month")
             lines.append("")
-            lines.append(f"- Current month spending: {analytics.currency} {mc.current_month_spending:,.2f}")
-            lines.append(f"- Previous month spending: {analytics.currency} {mc.previous_month_spending:,.2f}")
+            lines.append(
+                f"- Current month spending: {analytics.currency} {mc.current_month_spending:,.2f}"
+            )
+            lines.append(
+                f"- Previous month spending: {analytics.currency} {mc.previous_month_spending:,.2f}"
+            )
             change_sign = "+" if mc.change_amount >= 0 else ""
             lines.append(f"- Change: {change_sign}{analytics.currency} {mc.change_amount:,.2f}")
             if mc.change_percentage is not None:
@@ -321,7 +323,9 @@ class ReportService:
                     f"{cat.percentage:.1f}% | {cat.transaction_count} |"
                 )
             lines.append("")
-            lines.append(f"**Total:** {analytics.currency} {category_breakdown.total_spending:,.2f}")
+            lines.append(
+                f"**Total:** {analytics.currency} {category_breakdown.total_spending:,.2f}"
+            )
         else:
             lines.append("No transactions in this period.")
         lines.append("")
@@ -387,7 +391,7 @@ class ReportService:
         """Generate PDF from markdown content."""
         try:
             import markdown
-            from weasyprint import HTML, CSS
+            from weasyprint import HTML
 
             # Convert markdown to HTML
             html_content = markdown.markdown(

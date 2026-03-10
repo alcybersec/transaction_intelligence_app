@@ -15,7 +15,7 @@ Common ranges:
 """
 
 import ipaddress
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -105,7 +105,9 @@ class IPAllowlistMiddleware(BaseHTTPMiddleware):
 
         return await call_next(request)
 
-    def _get_client_ip(self, request: Request) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    def _get_client_ip(
+        self, request: Request
+    ) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
         """
         Extract client IP from request.
 

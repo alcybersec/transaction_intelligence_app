@@ -98,9 +98,8 @@ class OllamaService:
                 "connected": True,
                 "models": models,
                 "configured_model": self.model,
-                "model_available": self.model in models or any(
-                    m.startswith(self.model.split(":")[0]) for m in models
-                ),
+                "model_available": self.model in models
+                or any(m.startswith(self.model.split(":")[0]) for m in models),
             }
         except httpx.ConnectError as e:
             return {
@@ -200,7 +199,10 @@ You MUST respond with valid JSON matching this schema:
 
 Respond ONLY with the JSON object, no other text or markdown."""
 
-        json_system = system or "You are a precise data extraction assistant. Always respond with valid JSON only."
+        json_system = (
+            system
+            or "You are a precise data extraction assistant. Always respond with valid JSON only."
+        )
 
         response = self.generate(
             prompt=json_prompt,
@@ -247,7 +249,7 @@ Respond ONLY with the JSON object, no other text or markdown."""
                 except json.JSONDecodeError:
                     pass
 
-            raise OllamaError(f"Failed to parse JSON from response: {text[:200]}")
+            raise OllamaError(f"Failed to parse JSON from response: {text[:200]}") from None
 
     def parse_transaction(
         self,
@@ -275,10 +277,16 @@ Respond ONLY with the JSON object, no other text or markdown."""
                 "amount": {"type": "number", "description": "Transaction amount"},
                 "currency": {"type": "string", "description": "ISO currency code (e.g., AED, USD)"},
                 "direction": {"type": "string", "enum": ["debit", "credit"]},
-                "occurred_at": {"type": "string", "description": "Transaction date/time in ISO format"},
+                "occurred_at": {
+                    "type": "string",
+                    "description": "Transaction date/time in ISO format",
+                },
                 "vendor_raw": {"type": "string", "description": "Merchant/vendor name"},
                 "card_last4": {"type": "string", "description": "Last 4 digits of card if present"},
-                "account_tail": {"type": "string", "description": "Account number suffix if present"},
+                "account_tail": {
+                    "type": "string",
+                    "description": "Account number suffix if present",
+                },
                 "available_balance": {"type": "number", "description": "Balance after transaction"},
                 "reference_id": {"type": "string", "description": "Transaction reference number"},
             },
@@ -289,6 +297,7 @@ Respond ONLY with the JSON object, no other text or markdown."""
         if custom_prompt:
             try:
                 from jinja2 import Template
+
                 template = Template(custom_prompt)
                 prompt = template.render(
                     sender=sender,
@@ -350,9 +359,7 @@ Key rules:
         Returns:
             Suggestion with category_id, confidence, and rationale
         """
-        categories_list = "\n".join(
-            f"- {c['id']}: {c['name']}" for c in categories
-        )
+        categories_list = "\n".join(f"- {c['id']}: {c['name']}" for c in categories)
 
         history_context = ""
         if transaction_history:
@@ -360,14 +367,17 @@ Key rules:
                 f"  - {t.get('amount', 'N/A')} {t.get('currency', 'AED')} on {t.get('date', 'N/A')}"
                 for t in transaction_history[:5]
             ]
-            history_context = f"\nRecent transactions:\n" + "\n".join(history_items)
+            history_context = "\nRecent transactions:\n" + "\n".join(history_items)
 
         schema = {
             "type": "object",
             "properties": {
                 "category_id": {"type": "string", "description": "UUID of suggested category"},
                 "confidence": {"type": "number", "description": "Confidence score 0.0 to 1.0"},
-                "rationale": {"type": "string", "description": "Brief explanation for the suggestion"},
+                "rationale": {
+                    "type": "string",
+                    "description": "Brief explanation for the suggestion",
+                },
             },
             "required": ["category_id", "confidence", "rationale"],
         }
@@ -452,6 +462,7 @@ Guidelines:
 
         # Calculate last month for reference
         from datetime import timedelta
+
         today_date = date.today()
         first_of_this_month = today_date.replace(day=1)
         last_month_end = first_of_this_month - timedelta(days=1)
@@ -534,7 +545,7 @@ Rules:
 
 Original question: {question}
 
-Query executed: {query_plan.get('explanation', 'N/A')}
+Query executed: {query_plan.get("explanation", "N/A")}
 
 Results:
 {results_str}

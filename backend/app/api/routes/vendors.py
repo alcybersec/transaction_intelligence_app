@@ -75,9 +75,9 @@ def _build_vendor_response(
 ) -> VendorResponse:
     """Build vendor response from model."""
     # Get alias count
-    alias_count = db.query(func.count(VendorAlias.id)).filter(
-        VendorAlias.vendor_id == vendor.id
-    ).scalar()
+    alias_count = (
+        db.query(func.count(VendorAlias.id)).filter(VendorAlias.vendor_id == vendor.id).scalar()
+    )
 
     # Get category from rule
     category_id = None
@@ -87,7 +87,7 @@ def _build_vendor_response(
         .options(joinedload(VendorCategoryRule.category))
         .filter(
             VendorCategoryRule.vendor_id == vendor.id,
-            VendorCategoryRule.enabled == True,
+            VendorCategoryRule.enabled.is_(True),
         )
         .order_by(VendorCategoryRule.priority.desc())
         .first()
@@ -142,22 +142,18 @@ async def list_vendors(
             and_(
                 VendorCategoryRule.vendor_id == Vendor.id,
                 VendorCategoryRule.category_id == category_id,
-                VendorCategoryRule.enabled == True,
+                VendorCategoryRule.enabled.is_(True),
             ),
         )
 
     # Transaction filter
     if has_transactions is True:
         query = query.filter(
-            db.query(TransactionGroup)
-            .filter(TransactionGroup.vendor_id == Vendor.id)
-            .exists()
+            db.query(TransactionGroup).filter(TransactionGroup.vendor_id == Vendor.id).exists()
         )
     elif has_transactions is False:
         query = query.filter(
-            ~db.query(TransactionGroup)
-            .filter(TransactionGroup.vendor_id == Vendor.id)
-            .exists()
+            ~db.query(TransactionGroup).filter(TransactionGroup.vendor_id == Vendor.id).exists()
         )
 
     # Get total count
@@ -165,12 +161,7 @@ async def list_vendors(
 
     # Apply pagination and ordering
     offset = (page - 1) * page_size
-    vendors = (
-        query.order_by(Vendor.canonical_name)
-        .offset(offset)
-        .limit(page_size)
-        .all()
-    )
+    vendors = query.order_by(Vendor.canonical_name).offset(offset).limit(page_size).all()
 
     return VendorListResponse(
         vendors=[_build_vendor_response(v, db) for v in vendors],
@@ -292,10 +283,14 @@ async def update_vendor(
         normalized = vendor_service.normalize(payload.canonical_name)
 
         # Check for duplicate
-        existing = db.query(Vendor).filter(
-            Vendor.canonical_name == normalized,
-            Vendor.id != vendor_id,
-        ).first()
+        existing = (
+            db.query(Vendor)
+            .filter(
+                Vendor.canonical_name == normalized,
+                Vendor.id != vendor_id,
+            )
+            .first()
+        )
         if existing:
             raise HTTPException(
                 status_code=400,
@@ -365,9 +360,7 @@ async def delete_vendor_category_rule(
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
 
-    query = db.query(VendorCategoryRule).filter(
-        VendorCategoryRule.vendor_id == vendor_id
-    )
+    query = db.query(VendorCategoryRule).filter(VendorCategoryRule.vendor_id == vendor_id)
 
     if category_id:
         query = query.filter(VendorCategoryRule.category_id == category_id)

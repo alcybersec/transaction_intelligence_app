@@ -11,7 +11,6 @@ from app.core.logging import get_logger
 from app.db.models import (
     Category,
     CategorySuggestion,
-    TransactionDirection,
     TransactionGroup,
     Vendor,
     VendorCategoryRule,
@@ -40,11 +39,7 @@ class CategorizationService:
 
     def get_categories_list(self) -> list[dict[str, str]]:
         """Get all categories formatted for AI prompts."""
-        categories = (
-            self.db.query(Category)
-            .order_by(Category.sort_order, Category.name)
-            .all()
-        )
+        categories = self.db.query(Category).order_by(Category.sort_order, Category.name).all()
         return [{"id": str(c.id), "name": c.name} for c in categories]
 
     def get_vendor_transaction_history(
@@ -133,11 +128,7 @@ class CategorizationService:
                 return None
 
             # Verify category exists
-            category = (
-                self.db.query(Category)
-                .filter(Category.id == suggested_category_id)
-                .first()
-            )
+            category = self.db.query(Category).filter(Category.id == suggested_category_id).first()
             if not category:
                 logger.warning(f"AI suggested invalid category: {suggested_category_id}")
                 return None
@@ -192,9 +183,7 @@ class CategorizationService:
             VendorCategoryRule if created, None otherwise
         """
         suggestion = (
-            self.db.query(CategorySuggestion)
-            .filter(CategorySuggestion.id == suggestion_id)
-            .first()
+            self.db.query(CategorySuggestion).filter(CategorySuggestion.id == suggestion_id).first()
         )
 
         if not suggestion:
@@ -257,9 +246,7 @@ class CategorizationService:
             True if successful
         """
         suggestion = (
-            self.db.query(CategorySuggestion)
-            .filter(CategorySuggestion.id == suggestion_id)
-            .first()
+            self.db.query(CategorySuggestion).filter(CategorySuggestion.id == suggestion_id).first()
         )
 
         if not suggestion:
@@ -329,7 +316,7 @@ class CategorizationService:
         total_vendors = self.db.query(func.count(Vendor.id)).scalar()
         vendors_with_rules_count = (
             self.db.query(func.count(func.distinct(VendorCategoryRule.vendor_id)))
-            .filter(VendorCategoryRule.enabled == True)
+            .filter(VendorCategoryRule.enabled.is_(True))
             .scalar()
         )
         vendors_with_pending_count = (
@@ -346,7 +333,7 @@ class CategorizationService:
         # Subquery for vendors with rules
         vendors_with_rules = (
             self.db.query(VendorCategoryRule.vendor_id)
-            .filter(VendorCategoryRule.enabled == True)
+            .filter(VendorCategoryRule.enabled.is_(True))
             .distinct()
             .subquery()
         )
@@ -395,11 +382,7 @@ class CategorizationService:
         stats = {"processed": 0, "success": 0, "failed": 0, "skipped": 0}
 
         if vendor_ids:
-            vendors = (
-                self.db.query(Vendor)
-                .filter(Vendor.id.in_(vendor_ids))
-                .all()
-            )
+            vendors = self.db.query(Vendor).filter(Vendor.id.in_(vendor_ids)).all()
             self._process_vendor_batch_parallel(vendors, stats, concurrency)
         elif process_all:
             # Process all uncategorized vendors in batches
@@ -438,11 +421,7 @@ class CategorizationService:
                 return {"status": "skipped", "vendor_id": vendor_id}
 
             # Get categories for AI prompt
-            categories = (
-                db.query(Category)
-                .order_by(Category.sort_order, Category.name)
-                .all()
-            )
+            categories = db.query(Category).order_by(Category.sort_order, Category.name).all()
             categories_list = [{"id": str(c.id), "name": c.name} for c in categories]
 
             if not categories_list:
@@ -468,6 +447,7 @@ class CategorizationService:
 
             # Call Ollama with a fresh client for this thread
             from app.services.ollama import OllamaService
+
             ollama = OllamaService()  # Fresh instance with its own HTTP client
             try:
                 result = ollama.suggest_category(

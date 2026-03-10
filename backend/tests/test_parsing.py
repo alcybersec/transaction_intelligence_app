@@ -3,8 +3,6 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-import pytest
-
 # Import from adapters module (parsers have been moved there)
 from app.adapters.mashreq.parsers import (
     MashreqAccountCreditParser,

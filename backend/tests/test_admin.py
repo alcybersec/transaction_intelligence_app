@@ -52,9 +52,7 @@ class TestAdminService:
 
         # Mock the query to return some messages
         mock_messages = [MagicMock() for _ in range(5)]
-        mock_db.query.return_value.filter.return_value.filter.return_value.order_by.return_value.all.return_value = (
-            mock_messages
-        )
+        mock_db.query.return_value.filter.return_value.filter.return_value.order_by.return_value.all.return_value = mock_messages
 
         service = AdminService(mock_db)
 
@@ -191,6 +189,7 @@ class TestAdminEndpoints:
     def test_reparse_endpoint_requires_auth(self):
         """Test that reparse endpoint requires authentication."""
         from fastapi.testclient import TestClient
+
         from app.main import app
 
         client = TestClient(app)
@@ -206,6 +205,7 @@ class TestAdminEndpoints:
     def test_health_report_endpoint_requires_auth(self):
         """Test that health report endpoint requires authentication."""
         from fastapi.testclient import TestClient
+
         from app.main import app
 
         client = TestClient(app)
@@ -218,6 +218,7 @@ class TestAdminEndpoints:
     def test_vendor_merge_endpoint_requires_auth(self):
         """Test that vendor merge endpoints require authentication."""
         from fastapi.testclient import TestClient
+
         from app.main import app
 
         client = TestClient(app)

@@ -21,7 +21,7 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 
-class InstrumentType(str, enum.Enum):
+class InstrumentType(enum.StrEnum):
     """Type of financial instrument."""
 
     CARD = "card"

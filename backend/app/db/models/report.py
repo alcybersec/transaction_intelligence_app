@@ -2,7 +2,7 @@
 
 import enum
 import uuid
-from datetime import date, datetime
+from datetime import datetime
 
 from sqlalchemy import (
     Column,
@@ -21,7 +21,7 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 
-class ReportGeneratedBy(str, enum.Enum):
+class ReportGeneratedBy(enum.StrEnum):
     """How the report was generated."""
 
     MANUAL = "manual"

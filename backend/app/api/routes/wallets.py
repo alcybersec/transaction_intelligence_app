@@ -31,7 +31,9 @@ from app.services.wallet import WalletService
 router = APIRouter()
 
 
-def _build_instrument_response(instrument, wallet_ids: list[UUID] | None = None) -> InstrumentResponse:
+def _build_instrument_response(
+    instrument, wallet_ids: list[UUID] | None = None
+) -> InstrumentResponse:
     """Build instrument response from model."""
     return InstrumentResponse(
         id=instrument.id,
@@ -166,7 +168,9 @@ async def create_instrument(
     if payload.type == "card" and not payload.last4:
         raise HTTPException(status_code=400, detail="last4 is required for card instruments")
     if payload.type == "account" and not payload.account_tail:
-        raise HTTPException(status_code=400, detail="account_tail is required for account instruments")
+        raise HTTPException(
+            status_code=400, detail="account_tail is required for account instruments"
+        )
 
     instrument = service.create_instrument(
         institution_id=payload.institution_id,

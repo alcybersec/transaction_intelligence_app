@@ -39,7 +39,7 @@ async def parse_message(
     try:
         message_id = UUID(request.message_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid message ID format")
+        raise HTTPException(status_code=400, detail="Invalid message ID format") from None
 
     try:
         service = ParsingService(db)

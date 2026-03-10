@@ -4,13 +4,12 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, func, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user
 from app.core.encryption import decrypt_body
 from app.db.models import (
-    Category,
     Message,
     ParseMode,
     ParseStatus,
@@ -99,9 +98,8 @@ async def list_transactions(
     - amount_min/amount_max: Amount range
     - search: Search in vendor name or notes
     """
-    query = (
-        db.query(TransactionGroup)
-        .options(joinedload(TransactionGroup.vendor), joinedload(TransactionGroup.category))
+    query = db.query(TransactionGroup).options(
+        joinedload(TransactionGroup.vendor), joinedload(TransactionGroup.category)
     )
 
     # Apply filters
@@ -156,10 +154,7 @@ async def list_transactions(
     # Apply pagination and ordering
     offset = (page - 1) * page_size
     transactions = (
-        query.order_by(TransactionGroup.occurred_at.desc())
-        .offset(offset)
-        .limit(page_size)
-        .all()
+        query.order_by(TransactionGroup.occurred_at.desc()).offset(offset).limit(page_size).all()
     )
 
     # Build response
@@ -304,12 +299,7 @@ async def get_review_queue(
     total = query.count()
 
     offset = (page - 1) * page_size
-    messages = (
-        query.order_by(Message.observed_at.desc())
-        .offset(offset)
-        .limit(page_size)
-        .all()
-    )
+    messages = query.order_by(Message.observed_at.desc()).offset(offset).limit(page_size).all()
 
     items = []
     for msg in messages:
@@ -365,7 +355,9 @@ async def manual_parse_message(
         try:
             mode = ParseMode(payload.parse_mode)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Invalid parse mode: {payload.parse_mode}")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid parse mode: {payload.parse_mode}"
+            ) from None
 
     # Decrypt body
     try:

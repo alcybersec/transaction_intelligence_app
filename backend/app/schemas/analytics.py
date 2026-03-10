@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
 # ============== Category Breakdown ==============
 
 
@@ -93,7 +92,9 @@ class MonthlyComparison(BaseModel):
     current_month_spending: Decimal
     previous_month_spending: Decimal
     change_amount: Decimal
-    change_percentage: float | None = Field(None, description="Percentage change from previous month")
+    change_percentage: float | None = Field(
+        None, description="Percentage change from previous month"
+    )
 
 
 class DashboardAnalyticsResponse(BaseModel):

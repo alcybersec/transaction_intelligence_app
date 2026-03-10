@@ -1,9 +1,7 @@
 """Worker entry point - handles background jobs and IMAP ingestion."""
 
 import signal
-import sys
 import threading
-import time
 
 import structlog
 from redis import Redis

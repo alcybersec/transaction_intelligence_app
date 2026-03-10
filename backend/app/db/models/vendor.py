@@ -133,7 +133,9 @@ class VendorAlias(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<VendorAlias(id={self.id}, alias_raw={self.alias_raw}, vendor_id={self.vendor_id})>"
+        return (
+            f"<VendorAlias(id={self.id}, alias_raw={self.alias_raw}, vendor_id={self.vendor_id})>"
+        )
 
 
 class VendorCategoryRule(Base):

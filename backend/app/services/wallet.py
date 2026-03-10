@@ -30,7 +30,7 @@ class WalletService:
         """List all institutions."""
         query = self.db.query(Institution)
         if active_only:
-            query = query.filter(Institution.is_active == True)
+            query = query.filter(Institution.is_active.is_(True))
         return query.order_by(Institution.display_name).all()
 
     def get_institution(self, institution_id: UUID) -> Institution | None:
@@ -138,7 +138,7 @@ class WalletService:
         if institution_id:
             query = query.filter(Instrument.institution_id == institution_id)
         if active_only:
-            query = query.filter(Instrument.is_active == True)
+            query = query.filter(Instrument.is_active.is_(True))
         if unassigned_only:
             # Subquery to find instruments already in wallets
             assigned_ids = self.db.query(WalletInstrument.instrument_id)
@@ -233,9 +233,7 @@ class WalletService:
         """Get a wallet by ID with its instruments."""
         return (
             self.db.query(Wallet)
-            .options(
-                joinedload(Wallet.wallet_instruments).joinedload(WalletInstrument.instrument)
-            )
+            .options(joinedload(Wallet.wallet_instruments).joinedload(WalletInstrument.instrument))
             .filter(Wallet.id == wallet_id)
             .first()
         )
@@ -244,9 +242,7 @@ class WalletService:
         """List all wallets with their instruments."""
         return (
             self.db.query(Wallet)
-            .options(
-                joinedload(Wallet.wallet_instruments).joinedload(WalletInstrument.instrument)
-            )
+            .options(joinedload(Wallet.wallet_instruments).joinedload(WalletInstrument.instrument))
             .order_by(Wallet.name)
             .all()
         )
@@ -414,8 +410,13 @@ class WalletService:
         if not wallet:
             return {}
 
-        cutoff_date = datetime.utcnow() - datetime.timedelta(days=days) if hasattr(datetime, 'timedelta') else None
+        cutoff_date = (
+            datetime.utcnow() - datetime.timedelta(days=days)
+            if hasattr(datetime, "timedelta")
+            else None
+        )
         from datetime import timedelta
+
         cutoff_date = datetime.utcnow() - timedelta(days=days)
 
         # Get current month boundaries
@@ -434,28 +435,18 @@ class WalletService:
         )
 
         # Sum this month's debits (spending)
-        spent_this_month = (
-            self.db.query(func.sum(TransactionGroup.amount))
-            .filter(
-                TransactionGroup.wallet_id == wallet_id,
-                TransactionGroup.direction == TransactionDirection.DEBIT,
-                TransactionGroup.occurred_at >= month_start,
-            )
-            .scalar()
-            or Decimal("0")
-        )
+        spent_this_month = self.db.query(func.sum(TransactionGroup.amount)).filter(
+            TransactionGroup.wallet_id == wallet_id,
+            TransactionGroup.direction == TransactionDirection.DEBIT,
+            TransactionGroup.occurred_at >= month_start,
+        ).scalar() or Decimal("0")
 
         # Sum this month's credits (income)
-        income_this_month = (
-            self.db.query(func.sum(TransactionGroup.amount))
-            .filter(
-                TransactionGroup.wallet_id == wallet_id,
-                TransactionGroup.direction == TransactionDirection.CREDIT,
-                TransactionGroup.occurred_at >= month_start,
-            )
-            .scalar()
-            or Decimal("0")
-        )
+        income_this_month = self.db.query(func.sum(TransactionGroup.amount)).filter(
+            TransactionGroup.wallet_id == wallet_id,
+            TransactionGroup.direction == TransactionDirection.CREDIT,
+            TransactionGroup.occurred_at >= month_start,
+        ).scalar() or Decimal("0")
 
         return {
             "id": wallet.id,

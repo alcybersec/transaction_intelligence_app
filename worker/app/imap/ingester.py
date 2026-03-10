@@ -4,7 +4,7 @@ import email
 import re
 import ssl
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -12,9 +12,8 @@ from typing import Any
 import redis
 import structlog
 from imapclient import IMAPClient
-from sqlalchemy.exc import IntegrityError
-
 from rq import Queue
+from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
 from app.core.encryption import encrypt_body, hash_body
@@ -94,7 +93,7 @@ class IMAPIngester:
             self._connect_redis()
             self.redis_client.set(
                 "imap:last_heartbeat",
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
                 ex=600,  # Expire after 10 minutes
             )
         except Exception as e:
@@ -301,9 +300,9 @@ class IMAPIngester:
             try:
                 observed_at = parsedate_to_datetime(date_str)
                 if observed_at.tzinfo is None:
-                    observed_at = observed_at.replace(tzinfo=timezone.utc)
+                    observed_at = observed_at.replace(tzinfo=UTC)
             except Exception:
-                observed_at = datetime.now(timezone.utc)
+                observed_at = datetime.now(UTC)
 
             # Extract body
             body = self._get_email_body(msg)

@@ -130,9 +130,7 @@ class VendorService:
 
         # Check if we have an alias for this normalized form
         alias = (
-            self.db.query(VendorAlias)
-            .filter(VendorAlias.alias_normalized == normalized)
-            .first()
+            self.db.query(VendorAlias).filter(VendorAlias.alias_normalized == normalized).first()
         )
 
         if alias:
@@ -182,7 +180,7 @@ class VendorService:
             self.db.query(VendorCategoryRule)
             .filter(
                 VendorCategoryRule.vendor_id == vendor_id,
-                VendorCategoryRule.enabled == True,
+                VendorCategoryRule.enabled.is_(True),
             )
             .order_by(VendorCategoryRule.priority.desc())
             .first()

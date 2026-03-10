@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
 # === Ollama Status ===
 
 
@@ -54,7 +53,9 @@ class SuggestCategoryRequest(BaseModel):
     """Request to generate a category suggestion."""
 
     vendor_id: UUID
-    force: bool = Field(default=False, description="Force regeneration even if pending suggestion exists")
+    force: bool = Field(
+        default=False, description="Force regeneration even if pending suggestion exists"
+    )
 
 
 class AcceptSuggestionRequest(BaseModel):
@@ -163,8 +164,12 @@ class BatchSuggestRequest(BaseModel):
         default=None, description="Specific vendors to process, or None for uncategorized"
     )
     max_vendors: int = Field(default=10, ge=1, le=50, description="Batch size per iteration")
-    process_all: bool = Field(default=True, description="Process ALL uncategorized vendors (in batches)")
-    concurrency: int = Field(default=6, ge=1, le=12, description="Number of parallel Ollama requests")
+    process_all: bool = Field(
+        default=True, description="Process ALL uncategorized vendors (in batches)"
+    )
+    concurrency: int = Field(
+        default=6, ge=1, le=12, description="Number of parallel Ollama requests"
+    )
 
 
 class BatchSuggestResponse(BaseModel):

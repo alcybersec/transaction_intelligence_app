@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 from app.api.routes.health import increment_metric
 from app.core.encryption import encrypt_body, hash_body
 from app.core.logging import get_logger
-from app.core.security import HMACVerificationError, verify_hmac_signature
 from app.core.metrics import messages_ingested_total
+from app.core.security import HMACVerificationError, verify_hmac_signature
 from app.db.models.message import Message, MessageSource, ParseStatus
-from app.db.session import get_db, SessionLocal
+from app.db.session import SessionLocal, get_db
 from app.schemas.ingest import (
     MessageResponse,
     SMSIngestBatchRequest,

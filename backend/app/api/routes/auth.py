@@ -2,7 +2,6 @@
 
 import time
 from collections import defaultdict
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -99,12 +98,12 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
             detail=f"Account locked until {e.locked_until.isoformat()}",
-        )
+        ) from None
     except AuthenticationError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
-        )
+        ) from None
 
 
 @router.post("/refresh", response_model=RefreshResponse)
@@ -130,7 +129,7 @@ async def refresh_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",
-        )
+        ) from None
 
 
 @router.get("/me", response_model=UserResponse)
@@ -169,7 +168,7 @@ async def change_password(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from None
 
 
 @router.post("/users", response_model=UserResponse)
@@ -203,7 +202,7 @@ async def create_user(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from None
 
 
 @router.get("/users", response_model=list[UserResponse])
@@ -246,7 +245,7 @@ async def initial_setup(
         )
 
     auth_service = AuthService(db)
-    user = auth_service.create_user(
+    auth_service.create_user(
         username="admin",
         password="changeme",
         display_name="Administrator",

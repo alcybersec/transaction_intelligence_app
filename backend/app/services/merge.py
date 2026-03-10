@@ -7,11 +7,9 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.db.models import (
-    Category,
     EvidenceRole,
     Instrument,
     Message,
-    ParseStatus,
     TransactionDirection,
     TransactionEvidence,
     TransactionGroup,
@@ -115,7 +113,7 @@ class MergeEngine:
                 self.db.query(Instrument)
                 .filter(
                     Instrument.last4 == parsed.card_last4,
-                    Instrument.is_active == True,
+                    Instrument.is_active.is_(True),
                 )
                 .first()
             )
@@ -127,7 +125,7 @@ class MergeEngine:
                 self.db.query(Instrument)
                 .filter(
                     Instrument.account_tail == parsed.account_tail,
-                    Instrument.is_active == True,
+                    Instrument.is_active.is_(True),
                 )
                 .first()
             )
@@ -227,10 +225,7 @@ class MergeEngine:
 
         # Update balance if newer
         if parsed.available_balance is not None:
-            if (
-                group.combined_balance_after is None
-                or message.observed_at > group.observed_at_max
-            ):
+            if group.combined_balance_after is None or message.observed_at > group.observed_at_max:
                 group.combined_balance_after = parsed.available_balance
 
         # Update reference_id if we now have one

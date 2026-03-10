@@ -6,8 +6,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.session import get_db
 from app.core import metrics as prom_metrics
+from app.db.session import get_db
 
 router = APIRouter()
 

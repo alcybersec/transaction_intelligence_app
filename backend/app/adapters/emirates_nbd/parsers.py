@@ -52,9 +52,8 @@ class EmiratesNBDCardPurchaseParser:
         """Check if message is an Emirates NBD card purchase."""
         body_upper = body.upper()
         # Check for purchase indicators
-        return (
-            any(kw in body_upper for kw in ["CARD", "USED", "CHARGED", "PURCHASE"])
-            and any(kw in body_upper for kw in ["AED", "USD", "EUR", "GBP"])
+        return any(kw in body_upper for kw in ["CARD", "USED", "CHARGED", "PURCHASE"]) and any(
+            kw in body_upper for kw in ["AED", "USD", "EUR", "GBP"]
         )
 
     def parse(self, sender: str, body: str, observed_at: datetime) -> ParsedTransaction | None:

@@ -16,8 +16,8 @@ import {
   Brain,
   Loader2,
 } from 'lucide-react'
-import { fetchVendors, setVendorCategoryRule, Vendor, VendorFilters } from '../api/vendors'
-import { fetchCategories, Category } from '../api/categories'
+import { fetchVendors, setVendorCategoryRule, VendorFilters } from '../api/vendors'
+import { fetchCategories } from '../api/categories'
 import {
   fetchSuggestions,
   acceptSuggestion,
@@ -30,6 +30,7 @@ interface VendorListProps {
   onSelectVendor?: (id: string) => void
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function VendorList({ onSelectVendor }: VendorListProps) {
   const queryClient = useQueryClient()
   const [filters, setFilters] = useState<VendorFilters>({

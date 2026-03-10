@@ -1,7 +1,7 @@
 """Worker tests."""
 
 from app.config import settings
-from app.core.encryption import encrypt_body, decrypt_body, hash_body
+from app.core.encryption import decrypt_body, encrypt_body, hash_body
 
 
 def test_config_loads():

@@ -14,9 +14,9 @@ import {
   X,
   FileText,
 } from 'lucide-react'
-import { fetchTransactions, Transaction, TransactionFilters } from '../api/transactions'
-import { fetchCategories, Category } from '../api/categories'
-import { fetchWallets, Wallet } from '../api/wallets'
+import { fetchTransactions, TransactionFilters } from '../api/transactions'
+import { fetchCategories } from '../api/categories'
+import { fetchWallets } from '../api/wallets'
 
 interface TransactionListProps {
   onSelectTransaction: (id: string) => void
@@ -52,7 +52,7 @@ export function TransactionList({ onSelectTransaction }: TransactionListProps) {
     queryFn: fetchWallets,
   })
 
-  const handleFilterChange = (key: keyof TransactionFilters, value: string | undefined) => {
+  const handleFilterChange = (key: keyof TransactionFilters, value: string | number | undefined) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value || undefined,
@@ -228,7 +228,7 @@ export function TransactionList({ onSelectTransaction }: TransactionListProps) {
                 step="0.01"
                 value={filters.amount_min || ''}
                 onChange={(e) =>
-                  handleFilterChange('amount_min', e.target.value as any)
+                  handleFilterChange('amount_min', e.target.value ? Number(e.target.value) : undefined)
                 }
                 className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
                 placeholder="0.00"
@@ -244,7 +244,7 @@ export function TransactionList({ onSelectTransaction }: TransactionListProps) {
                 step="0.01"
                 value={filters.amount_max || ''}
                 onChange={(e) =>
-                  handleFilterChange('amount_max', e.target.value as any)
+                  handleFilterChange('amount_max', e.target.value ? Number(e.target.value) : undefined)
                 }
                 className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
                 placeholder="10000.00"

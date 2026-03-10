@@ -17,8 +17,6 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import {
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -31,7 +29,7 @@ import {
   Line,
   Legend,
 } from 'recharts'
-import { fetchDashboardAnalytics, fetchSpendingTimeSeries, DashboardAnalyticsResponse } from '../api/analytics'
+import { fetchDashboardAnalytics, fetchSpendingTimeSeries } from '../api/analytics'
 import { fetchBudgets, BudgetProgress } from '../api/budgets'
 import { exportTransactionsCsv, downloadBlob } from '../api/reports'
 

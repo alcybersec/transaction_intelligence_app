@@ -1,8 +1,7 @@
 """Background jobs for the worker."""
 
-import structlog
 import httpx
-from uuid import UUID
+import structlog
 
 from app.config import settings
 

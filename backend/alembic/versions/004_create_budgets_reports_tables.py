@@ -19,7 +19,9 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 # Define enum types
-reportgeneratedby = postgresql.ENUM("manual", "scheduled", name="reportgeneratedby", create_type=False)
+reportgeneratedby = postgresql.ENUM(
+    "manual", "scheduled", name="reportgeneratedby", create_type=False
+)
 
 
 def upgrade() -> None:

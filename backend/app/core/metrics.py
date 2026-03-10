@@ -4,14 +4,24 @@ This module provides centralized metrics collection using prometheus-client.
 All metrics are exposed at the /metrics endpoint in Prometheus format.
 """
 
-from prometheus_client import Counter, Gauge, Histogram, Info, REGISTRY, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    REGISTRY,
+    Counter,
+    Gauge,
+    Histogram,
+    Info,
+    generate_latest,
+)
 
 # Application info
 app_info = Info("txn_app", "Transaction Intelligence App information")
-app_info.info({
-    "version": "0.1.0",
-    "service": "api",
-})
+app_info.info(
+    {
+        "version": "0.1.0",
+        "service": "api",
+    }
+)
 
 # Ingestion metrics
 messages_ingested_total = Counter(
@@ -23,7 +33,11 @@ messages_ingested_total = Counter(
 messages_parse_total = Counter(
     "txn_messages_parse_total",
     "Total number of messages parsed",
-    ["mode", "status", "institution"],  # mode: regex/ollama/hybrid, status: success/failed/needs_review
+    [
+        "mode",
+        "status",
+        "institution",
+    ],  # mode: regex/ollama/hybrid, status: success/failed/needs_review
 )
 
 transactions_created_total = Counter(

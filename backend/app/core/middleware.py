@@ -1,11 +1,12 @@
 """FastAPI middleware for metrics and logging."""
 
 import time
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from app.core.metrics import http_requests_total, http_request_duration_seconds
+from app.core.metrics import http_request_duration_seconds, http_requests_total
 
 
 class PrometheusMiddleware(BaseHTTPMiddleware):
@@ -55,7 +56,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         parts = path.split("/")
         normalized_parts = []
 
-        for i, part in enumerate(parts):
+        for _i, part in enumerate(parts):
             if not part:
                 normalized_parts.append(part)
                 continue

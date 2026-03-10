@@ -3,17 +3,15 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-import pytest
-
 from app.adapters import get_adapter_registry
 from app.adapters.base import BankAdapter, ParserProtocol
+from app.adapters.emirates_nbd import EmiratesNBDAdapter
 from app.adapters.mashreq import MashreqAdapter
 from app.adapters.mashreq.parsers import (
     MashreqAccountCreditParser,
     MashreqCardDebitParser,
     MashreqCardPurchaseParser,
 )
-from app.adapters.emirates_nbd import EmiratesNBDAdapter
 from app.adapters.registry import AdapterRegistry, reset_adapter_registry
 
 
@@ -76,8 +74,7 @@ class TestAdapterRegistry:
         registry = get_adapter_registry()
 
         adapter = registry.detect_institution_sms(
-            "MASHREQ",
-            "Your Card ending 1234 was used for AED 50.00 at STORE on 15-Jan-2024."
+            "MASHREQ", "Your Card ending 1234 was used for AED 50.00 at STORE on 15-Jan-2024."
         )
 
         assert adapter is not None
@@ -88,8 +85,7 @@ class TestAdapterRegistry:
         registry = get_adapter_registry()
 
         adapter = registry.detect_institution_sms(
-            "mashreqbank",
-            "Your Card ending 1234 was used for AED 50.00 at STORE."
+            "mashreqbank", "Your Card ending 1234 was used for AED 50.00 at STORE."
         )
 
         assert adapter is not None
@@ -99,10 +95,7 @@ class TestAdapterRegistry:
         """Test SMS detection returns None for unknown sender."""
         registry = get_adapter_registry()
 
-        adapter = registry.detect_institution_sms(
-            "UNKNOWN_BANK",
-            "Some banking message"
-        )
+        adapter = registry.detect_institution_sms("UNKNOWN_BANK", "Some banking message")
 
         assert adapter is None
 
@@ -185,17 +178,17 @@ class TestMashreqAdapter:
 
     def test_can_handle_sms_valid(self):
         """Test SMS detection for valid Mashreq message."""
-        assert self.adapter.can_handle_sms(
-            "MASHREQ",
-            "Your Card ending 1234 was used for AED 50.00"
-        ) is True
+        assert (
+            self.adapter.can_handle_sms("MASHREQ", "Your Card ending 1234 was used for AED 50.00")
+            is True
+        )
 
     def test_can_handle_sms_invalid_sender(self):
         """Test SMS detection for invalid sender."""
-        assert self.adapter.can_handle_sms(
-            "OTHERBANK",
-            "Your Card ending 1234 was used for AED 50.00"
-        ) is False
+        assert (
+            self.adapter.can_handle_sms("OTHERBANK", "Your Card ending 1234 was used for AED 50.00")
+            is False
+        )
 
     def test_sms_sender_patterns(self):
         """Test SMS sender patterns."""
@@ -259,10 +252,9 @@ class TestMashreqParsers:
         """Test card purchase parser detection."""
         parser = MashreqCardPurchaseParser()
 
-        assert parser.can_parse(
-            "MASHREQ",
-            "Card ending 1234 was used for AED 50.00 at STORE"
-        ) is True
+        assert (
+            parser.can_parse("MASHREQ", "Card ending 1234 was used for AED 50.00 at STORE") is True
+        )
 
     def test_card_purchase_parser_parse(self):
         """Test card purchase parser parsing."""
@@ -272,7 +264,7 @@ class TestMashreqParsers:
         result = parser.parse(
             "MASHREQ",
             "Your Card ending 1234 was used for AED 150.50 at CARREFOUR on 15-Jan-2024 14:30. Avl Cr Limit: AED 10,000.00",
-            observed_at
+            observed_at,
         )
 
         assert result is not None
@@ -291,7 +283,7 @@ class TestMashreqParsers:
         result = parser.parse(
             "MASHREQ",
             "Thank you for using NEO VISA Debit Card Card ending 5300 for AED 107.50 at SPINNEYS on 26-JAN-2026 07:07 PM. Available Balance is AED 2,861.93",
-            observed_at
+            observed_at,
         )
 
         assert result is not None
@@ -308,7 +300,7 @@ class TestMashreqParsers:
         result = parser.parse(
             "MASHREQ",
             "AED 5,000.00 has been credited to your AC No. ending 1234 on 15-Jan-2024. Avl Bal: AED 15,000.00",
-            observed_at
+            observed_at,
         )
 
         assert result is not None
@@ -325,7 +317,7 @@ class TestMashreqParsers:
         result = parser.parse(
             "MASHREQ",
             "Your AC No:XXXXXXXX8621 is credited with AED 8979.00 for Aani Instant Payments (Local IPP Transfer). Login to Online Banking for details.",
-            observed_at
+            observed_at,
         )
 
         assert result is not None
@@ -342,7 +334,7 @@ class TestMashreqParsers:
         result = parser.parse(
             "MASHREQ",
             "AED 1,000.00 was debited from your Card ending 1234 on 15-Jan-2024. ATM Withdrawal. Avl Bal: AED 5,000.00",
-            observed_at
+            observed_at,
         )
 
         assert result is not None

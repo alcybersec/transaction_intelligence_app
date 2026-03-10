@@ -1,6 +1,5 @@
 """Tests for encryption utilities."""
 
-
 from app.core.encryption import decrypt_body, encrypt_body, hash_body
 
 

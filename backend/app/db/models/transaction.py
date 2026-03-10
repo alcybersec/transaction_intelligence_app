@@ -3,7 +3,6 @@
 import enum
 import uuid
 from datetime import datetime
-from decimal import Decimal
 
 from sqlalchemy import (
     Column,
@@ -22,14 +21,14 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 
-class TransactionDirection(str, enum.Enum):
+class TransactionDirection(enum.StrEnum):
     """Direction of money flow."""
 
     DEBIT = "debit"
     CREDIT = "credit"
 
 
-class TransactionStatus(str, enum.Enum):
+class TransactionStatus(enum.StrEnum):
     """Status of the transaction."""
 
     POSTED = "posted"
@@ -38,7 +37,7 @@ class TransactionStatus(str, enum.Enum):
     UNKNOWN = "unknown"
 
 
-class EvidenceRole(str, enum.Enum):
+class EvidenceRole(enum.StrEnum):
     """Role of evidence in a transaction group."""
 
     PRIMARY = "primary"
@@ -219,9 +218,7 @@ class TransactionEvidence(Base):
     message = relationship("Message")
 
     __table_args__ = (
-        UniqueConstraint(
-            "transaction_group_id", "message_id", name="uq_transaction_evidence"
-        ),
+        UniqueConstraint("transaction_group_id", "message_id", name="uq_transaction_evidence"),
         Index("ix_transaction_evidence_group", "transaction_group_id"),
         Index("ix_transaction_evidence_message", "message_id"),
     )

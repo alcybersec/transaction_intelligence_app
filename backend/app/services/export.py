@@ -8,12 +8,9 @@ from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.models import (
-    Category,
     TransactionDirection,
     TransactionGroup,
     TransactionStatus,
-    Vendor,
-    Wallet,
 )
 from app.schemas.analytics import ExportRequest
 
@@ -78,37 +75,41 @@ class ExportService:
         writer = csv.writer(output)
 
         # Header row
-        writer.writerow([
-            "Date",
-            "Time",
-            "Type",
-            "Amount",
-            "Currency",
-            "Vendor",
-            "Category",
-            "Wallet",
-            "Balance After",
-            "Reference",
-            "Notes",
-            "Status",
-        ])
+        writer.writerow(
+            [
+                "Date",
+                "Time",
+                "Type",
+                "Amount",
+                "Currency",
+                "Vendor",
+                "Category",
+                "Wallet",
+                "Balance After",
+                "Reference",
+                "Notes",
+                "Status",
+            ]
+        )
 
         # Data rows
         for txn in transactions:
-            writer.writerow([
-                txn.occurred_at.strftime("%Y-%m-%d"),
-                txn.occurred_at.strftime("%H:%M:%S"),
-                txn.direction.value.capitalize(),
-                f"{txn.amount:.2f}",
-                txn.currency,
-                txn.vendor.canonical_name if txn.vendor else txn.vendor_raw or "",
-                txn.category.name if txn.category else "Uncategorized",
-                txn.wallet.name if txn.wallet else "",
-                f"{txn.combined_balance_after:.2f}" if txn.combined_balance_after else "",
-                txn.reference_id or "",
-                txn.notes or "",
-                txn.status.value,
-            ])
+            writer.writerow(
+                [
+                    txn.occurred_at.strftime("%Y-%m-%d"),
+                    txn.occurred_at.strftime("%H:%M:%S"),
+                    txn.direction.value.capitalize(),
+                    f"{txn.amount:.2f}",
+                    txn.currency,
+                    txn.vendor.canonical_name if txn.vendor else txn.vendor_raw or "",
+                    txn.category.name if txn.category else "Uncategorized",
+                    txn.wallet.name if txn.wallet else "",
+                    f"{txn.combined_balance_after:.2f}" if txn.combined_balance_after else "",
+                    txn.reference_id or "",
+                    txn.notes or "",
+                    txn.status.value,
+                ]
+            )
 
         return output.getvalue()
 
@@ -142,32 +143,38 @@ class ExportService:
         writer = csv.writer(output)
 
         # Header
-        writer.writerow([
-            "Category",
-            "Amount",
-            "Currency",
-            "Transactions",
-            "Percentage",
-        ])
+        writer.writerow(
+            [
+                "Category",
+                "Amount",
+                "Currency",
+                "Transactions",
+                "Percentage",
+            ]
+        )
 
         # Data rows
         for cat in breakdown.categories:
-            writer.writerow([
-                cat.category_name,
-                f"{cat.total_amount:.2f}",
-                breakdown.currency,
-                cat.transaction_count,
-                f"{cat.percentage:.1f}%",
-            ])
+            writer.writerow(
+                [
+                    cat.category_name,
+                    f"{cat.total_amount:.2f}",
+                    breakdown.currency,
+                    cat.transaction_count,
+                    f"{cat.percentage:.1f}%",
+                ]
+            )
 
         # Total row
-        writer.writerow([
-            "TOTAL",
-            f"{breakdown.total_spending:.2f}",
-            breakdown.currency,
-            sum(c.transaction_count for c in breakdown.categories),
-            "100.0%",
-        ])
+        writer.writerow(
+            [
+                "TOTAL",
+                f"{breakdown.total_spending:.2f}",
+                breakdown.currency,
+                sum(c.transaction_count for c in breakdown.categories),
+                "100.0%",
+            ]
+        )
 
         return output.getvalue()
 
@@ -204,24 +211,30 @@ class ExportService:
         writer = csv.writer(output)
 
         # Header
-        writer.writerow([
-            "Vendor",
-            "Category",
-            "Amount",
-            "Currency",
-            "Transactions",
-            "Last Transaction",
-        ])
+        writer.writerow(
+            [
+                "Vendor",
+                "Category",
+                "Amount",
+                "Currency",
+                "Transactions",
+                "Last Transaction",
+            ]
+        )
 
         # Data rows
         for vendor in top_vendors.vendors:
-            writer.writerow([
-                vendor.vendor_name,
-                vendor.category_name or "Uncategorized",
-                f"{vendor.total_amount:.2f}",
-                top_vendors.currency,
-                vendor.transaction_count,
-                vendor.last_transaction_date.strftime("%Y-%m-%d") if vendor.last_transaction_date else "",
-            ])
+            writer.writerow(
+                [
+                    vendor.vendor_name,
+                    vendor.category_name or "Uncategorized",
+                    f"{vendor.total_amount:.2f}",
+                    top_vendors.currency,
+                    vendor.transaction_count,
+                    vendor.last_transaction_date.strftime("%Y-%m-%d")
+                    if vendor.last_transaction_date
+                    else "",
+                ]
+            )
 
         return output.getvalue()

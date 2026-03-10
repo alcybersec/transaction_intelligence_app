@@ -1,7 +1,5 @@
 """Tests for vendor normalization service."""
 
-import pytest
-
 from app.services.vendor import VendorService
 
 

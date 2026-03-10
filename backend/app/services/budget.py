@@ -4,22 +4,19 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, and_
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.db.models import (
     Budget,
-    Category,
     TransactionDirection,
     TransactionGroup,
     TransactionStatus,
-    Wallet,
 )
 from app.schemas.budget import (
     BudgetCreateRequest,
     BudgetListResponse,
     BudgetProgressResponse,
-    BudgetResponse,
     BudgetSummaryResponse,
     BudgetUpdateRequest,
 )

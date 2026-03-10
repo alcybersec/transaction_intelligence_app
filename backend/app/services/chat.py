@@ -216,10 +216,14 @@ class ChatService:
     def _get_data_range(self) -> dict[str, str] | None:
         """Get the date range of available transaction data."""
         try:
-            result = self.db.query(
-                func.min(TransactionGroup.occurred_at),
-                func.max(TransactionGroup.occurred_at),
-            ).filter(TransactionGroup.status == TransactionStatus.POSTED).first()
+            result = (
+                self.db.query(
+                    func.min(TransactionGroup.occurred_at),
+                    func.max(TransactionGroup.occurred_at),
+                )
+                .filter(TransactionGroup.status == TransactionStatus.POSTED)
+                .first()
+            )
 
             if result and result[0] and result[1]:
                 return {
@@ -333,13 +337,10 @@ class ChatService:
 
     def _base_query(self, period_start: date, period_end: date):
         """Create base query with common filters."""
-        return (
-            self.db.query(TransactionGroup)
-            .filter(
-                TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
-                TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
-                TransactionGroup.status == TransactionStatus.POSTED,
-            )
+        return self.db.query(TransactionGroup).filter(
+            TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
+            TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
+            TransactionGroup.status == TransactionStatus.POSTED,
         )
 
     def _query_total_spending(
@@ -349,14 +350,11 @@ class ChatService:
         params: dict,
     ) -> dict[str, Any]:
         """Query total spending."""
-        query = (
-            self.db.query(func.sum(TransactionGroup.amount))
-            .filter(
-                TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
-                TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
-                TransactionGroup.direction == TransactionDirection.DEBIT,
-                TransactionGroup.status == TransactionStatus.POSTED,
-            )
+        query = self.db.query(func.sum(TransactionGroup.amount)).filter(
+            TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
+            TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
+            TransactionGroup.direction == TransactionDirection.DEBIT,
+            TransactionGroup.status == TransactionStatus.POSTED,
         )
 
         wallet_id = self._parse_uuid(params.get("wallet_id"))
@@ -383,14 +381,11 @@ class ChatService:
         params: dict,
     ) -> dict[str, Any]:
         """Query total income."""
-        query = (
-            self.db.query(func.sum(TransactionGroup.amount))
-            .filter(
-                TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
-                TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
-                TransactionGroup.direction == TransactionDirection.CREDIT,
-                TransactionGroup.status == TransactionStatus.POSTED,
-            )
+        query = self.db.query(func.sum(TransactionGroup.amount)).filter(
+            TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
+            TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
+            TransactionGroup.direction == TransactionDirection.CREDIT,
+            TransactionGroup.status == TransactionStatus.POSTED,
         )
 
         wallet_id = self._parse_uuid(params.get("wallet_id"))
@@ -540,18 +535,15 @@ class ChatService:
                 "message": f"No vendor found matching '{vendor_name}'",
             }
 
-        query = (
-            self.db.query(
-                func.sum(TransactionGroup.amount).label("total"),
-                func.count(TransactionGroup.id).label("count"),
-            )
-            .filter(
-                TransactionGroup.vendor_id == vendor.id,
-                TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
-                TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
-                TransactionGroup.direction == TransactionDirection.DEBIT,
-                TransactionGroup.status == TransactionStatus.POSTED,
-            )
+        query = self.db.query(
+            func.sum(TransactionGroup.amount).label("total"),
+            func.count(TransactionGroup.id).label("count"),
+        ).filter(
+            TransactionGroup.vendor_id == vendor.id,
+            TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
+            TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
+            TransactionGroup.direction == TransactionDirection.DEBIT,
+            TransactionGroup.status == TransactionStatus.POSTED,
         )
 
         result = query.first()
@@ -648,13 +640,10 @@ class ChatService:
         params: dict,
     ) -> dict[str, Any]:
         """Query transaction count."""
-        query = (
-            self.db.query(func.count(TransactionGroup.id))
-            .filter(
-                TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
-                TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
-                TransactionGroup.status == TransactionStatus.POSTED,
-            )
+        query = self.db.query(func.count(TransactionGroup.id)).filter(
+            TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
+            TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
+            TransactionGroup.status == TransactionStatus.POSTED,
         )
 
         direction = params.get("direction")
@@ -683,16 +672,13 @@ class ChatService:
         params: dict,
     ) -> dict[str, Any]:
         """Query average transaction amount."""
-        query = (
-            self.db.query(
-                func.avg(TransactionGroup.amount),
-                func.count(TransactionGroup.id),
-            )
-            .filter(
-                TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
-                TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
-                TransactionGroup.status == TransactionStatus.POSTED,
-            )
+        query = self.db.query(
+            func.avg(TransactionGroup.amount),
+            func.count(TransactionGroup.id),
+        ).filter(
+            TransactionGroup.occurred_at >= datetime.combine(period_start, datetime.min.time()),
+            TransactionGroup.occurred_at <= datetime.combine(period_end, datetime.max.time()),
+            TransactionGroup.status == TransactionStatus.POSTED,
         )
 
         direction = params.get("direction")

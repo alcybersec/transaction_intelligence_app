@@ -76,8 +76,7 @@ class MashreqCardPurchaseParser:
         # Note: Sender check is handled by the adapter, but we double-check here
         body_upper = body.upper()
         return any(
-            kw in body_upper
-            for kw in ["CARD ENDING", "WAS USED FOR", "USED FOR", "CARD"]
+            kw in body_upper for kw in ["CARD ENDING", "WAS USED FOR", "USED FOR", "CARD"]
         ) and any(kw in body_upper for kw in ["AED", "USD", "EUR", "GBP"])
 
     def parse(self, sender: str, body: str, observed_at: datetime) -> ParsedTransaction | None:
@@ -144,9 +143,7 @@ class MashreqCardPurchaseParser:
             institution_name="mashreq",
         )
 
-    def _parse_date(
-        self, date_str: str, time_str: str | None, observed_at: datetime
-    ) -> datetime:
+    def _parse_date(self, date_str: str, time_str: str | None, observed_at: datetime) -> datetime:
         """Parse date/time from message."""
         # Common date formats: 15-Jan-2024, 15/Jan/24, 15-Jan-24
         date_formats = [
@@ -173,7 +170,9 @@ class MashreqCardPurchaseParser:
                                     hour=time_parsed.hour, minute=time_parsed.minute
                                 )
                             except ValueError:
-                                time_parts = time_clean.replace("AM", "").replace("PM", "").split(":")
+                                time_parts = (
+                                    time_clean.replace("AM", "").replace("PM", "").split(":")
+                                )
                                 hour = int(time_parts[0])
                                 minute = int(time_parts[1]) if len(time_parts) > 1 else 0
                                 if "PM" in time_str.upper() and hour != 12:

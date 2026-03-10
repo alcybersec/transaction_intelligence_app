@@ -25,7 +25,6 @@ import {
   updateAdapterConfig,
   testPattern,
   type AdapterInfo,
-  type AdapterConfig,
   type TestPatternResponse,
 } from '../api/adapters'
 

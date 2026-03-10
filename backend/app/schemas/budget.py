@@ -66,8 +66,12 @@ class BudgetProgressResponse(BaseModel):
     category_color: str | None = None
     month: date
     limit_amount: Decimal
-    spent_amount: Decimal = Field(default=Decimal("0"), description="Amount spent in this category this month")
-    remaining_amount: Decimal = Field(default=Decimal("0"), description="Amount remaining in budget")
+    spent_amount: Decimal = Field(
+        default=Decimal("0"), description="Amount spent in this category this month"
+    )
+    remaining_amount: Decimal = Field(
+        default=Decimal("0"), description="Amount remaining in budget"
+    )
     percentage_used: float = Field(default=0.0, description="Percentage of budget used (0-100+)")
     is_over_budget: bool = Field(default=False, description="Whether spending exceeds budget")
     currency: str

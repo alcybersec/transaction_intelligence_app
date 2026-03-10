@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
@@ -192,7 +192,9 @@ def accept_suggestion(
         # Check if suggestion exists
         from app.db.models import CategorySuggestion
 
-        suggestion = db.query(CategorySuggestion).filter(CategorySuggestion.id == suggestion_id).first()
+        suggestion = (
+            db.query(CategorySuggestion).filter(CategorySuggestion.id == suggestion_id).first()
+        )
         if not suggestion:
             raise HTTPException(status_code=404, detail="Suggestion not found")
         if suggestion.status != "pending":
@@ -231,7 +233,9 @@ def reject_suggestion(
     if not success:
         from app.db.models import CategorySuggestion
 
-        suggestion = db.query(CategorySuggestion).filter(CategorySuggestion.id == suggestion_id).first()
+        suggestion = (
+            db.query(CategorySuggestion).filter(CategorySuggestion.id == suggestion_id).first()
+        )
         if not suggestion:
             raise HTTPException(status_code=404, detail="Suggestion not found")
         if suggestion.status != "pending":
@@ -312,13 +316,13 @@ def reparse_message(
         raise HTTPException(
             status_code=400,
             detail=f"Invalid parse mode: {request.parse_mode}. Must be regex, ollama, or hybrid",
-        )
+        ) from None
 
     # Decrypt body
     try:
         body = decrypt_body(message.raw_body_encrypted)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to decrypt message: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to decrypt message: {e}") from e
 
     # Parse
     parsing_service = ParsingService(db)
@@ -390,7 +394,7 @@ def update_parse_mode(
         raise HTTPException(
             status_code=400,
             detail=f"Invalid parse mode: {request.parse_mode}. Must be regex, ollama, or hybrid",
-        )
+        ) from None
 
     # Update
     institution.parse_mode = mode.value
@@ -409,7 +413,7 @@ def list_institution_parse_modes(
     current_user: User = Depends(get_current_user),
 ):
     """List all institutions with their parse modes."""
-    institutions = db.query(Institution).filter(Institution.is_active == True).all()
+    institutions = db.query(Institution).filter(Institution.is_active.is_(True)).all()
 
     return {
         "institutions": [

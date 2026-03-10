@@ -1,8 +1,7 @@
 """Budget model for monthly category spending limits."""
 
 import uuid
-from datetime import date, datetime
-from decimal import Decimal
+from datetime import datetime
 
 from sqlalchemy import (
     Column,
@@ -79,7 +78,9 @@ class Budget(Base):
     category = relationship("Category")
 
     __table_args__ = (
-        UniqueConstraint("wallet_id", "category_id", "month", name="uq_budget_wallet_category_month"),
+        UniqueConstraint(
+            "wallet_id", "category_id", "month", name="uq_budget_wallet_category_month"
+        ),
         Index("ix_budgets_wallet", "wallet_id"),
         Index("ix_budgets_category", "category_id"),
         Index("ix_budgets_month", "month"),

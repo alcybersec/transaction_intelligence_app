@@ -1,7 +1,6 @@
 """Admin endpoints for data repair and maintenance operations."""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -19,15 +18,9 @@ router = APIRouter()
 # Request/Response schemas
 class ReparseRequest(BaseModel):
     since: datetime = Field(..., description="Reparse messages from this datetime")
-    institution_name: Optional[str] = Field(
-        None, description="Filter by institution name"
-    )
-    parse_mode: Optional[str] = Field(
-        None, description="Override parse mode (regex/ollama/hybrid)"
-    )
-    include_successful: bool = Field(
-        False, description="Also reparse already successful messages"
-    )
+    institution_name: str | None = Field(None, description="Filter by institution name")
+    parse_mode: str | None = Field(None, description="Override parse mode (regex/ollama/hybrid)")
+    include_successful: bool = Field(False, description="Also reparse already successful messages")
     dry_run: bool = Field(True, description="Preview without making changes")
 
 
@@ -44,7 +37,7 @@ class ReparseResponse(BaseModel):
 class RemergeRequest(BaseModel):
     start_date: datetime = Field(..., description="Start of date range")
     end_date: datetime = Field(..., description="End of date range")
-    wallet_id: Optional[UUID] = Field(None, description="Filter by wallet")
+    wallet_id: UUID | None = Field(None, description="Filter by wallet")
     dry_run: bool = Field(True, description="Preview without making changes")
 
 
@@ -123,7 +116,7 @@ async def reparse_messages(
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid parse mode: {request.parse_mode}. Must be one of: regex, ollama, hybrid",
-            )
+            ) from None
 
     stats = admin_service.reparse_messages_since(
         since=request.since,
@@ -154,9 +147,7 @@ async def remerge_transactions(
     Requires admin privileges.
     """
     if request.start_date > request.end_date:
-        raise HTTPException(
-            status_code=400, detail="start_date must be before end_date"
-        )
+        raise HTTPException(status_code=400, detail="start_date must be before end_date")
 
     admin_service = AdminService(db)
 
@@ -193,7 +184,7 @@ async def preview_vendor_merge(
         )
         return VendorMergePreview(**preview)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from None
 
 
 @router.post("/vendors/merge", response_model=VendorMergeResponse)
@@ -220,7 +211,7 @@ async def merge_vendors(
         )
         return VendorMergeResponse(**stats)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from None
 
 
 @router.get("/health-report", response_model=DataHealthReport)

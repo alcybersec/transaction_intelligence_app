@@ -54,7 +54,9 @@ class ParserMetadata:
 
     name: str
     description: str
-    message_types: list[str] = field(default_factory=list)  # e.g., ["card_purchase", "atm_withdrawal"]
+    message_types: list[str] = field(
+        default_factory=list
+    )  # e.g., ["card_purchase", "atm_withdrawal"]
     version: str = "1.0.0"
 
 

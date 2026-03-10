@@ -12,9 +12,11 @@ def test_metrics_endpoint():
     response = client.get("/metrics")
     assert response.status_code == 200
     # Prometheus metrics should be text format
-    assert "text/plain" in response.headers.get("content-type", "") or \
-           "text/plain" in response.headers.get("Content-Type", "") or \
-           "openmetrics" in response.headers.get("content-type", "").lower()
+    assert (
+        "text/plain" in response.headers.get("content-type", "")
+        or "text/plain" in response.headers.get("Content-Type", "")
+        or "openmetrics" in response.headers.get("content-type", "").lower()
+    )
 
     # Check for expected metrics in the response
     content = response.text
@@ -26,13 +28,9 @@ def test_metrics_endpoint():
 def test_metrics_module_imports():
     """Test that metrics module exports expected metrics."""
     from app.core.metrics import (
-        messages_ingested_total,
-        messages_parse_total,
-        transactions_created_total,
         http_requests_total,
-        http_request_duration_seconds,
-        admin_reparse_total,
-        admin_remerge_total,
+        messages_ingested_total,
+        transactions_created_total,
     )
 
     # Verify these are Prometheus metric types

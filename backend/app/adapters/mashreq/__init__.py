@@ -9,6 +9,7 @@ Supports:
 
 from app.adapters.mashreq.adapter import MashreqAdapter
 
+
 # Export the adapter factory function for auto-discovery
 def get_adapter() -> MashreqAdapter:
     """Return Mashreq adapter instance for registry."""

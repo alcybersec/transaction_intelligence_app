@@ -1,7 +1,6 @@
 """Admin service for data repair and maintenance operations."""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import and_, delete, func, or_, update
@@ -11,7 +10,6 @@ from app.core.encryption import decrypt_body
 from app.core.logging import get_logger
 from app.core.metrics import admin_remerge_total, admin_reparse_total
 from app.db.models import (
-    EvidenceRole,
     Message,
     ParseMode,
     ParseStatus,
@@ -58,8 +56,8 @@ class AdminService:
     def reparse_messages_since(
         self,
         since: datetime,
-        institution_name: Optional[str] = None,
-        parse_mode: Optional[ParseMode] = None,
+        institution_name: str | None = None,
+        parse_mode: ParseMode | None = None,
         include_successful: bool = False,
         dry_run: bool = False,
     ) -> dict:
@@ -178,7 +176,7 @@ class AdminService:
         self,
         start_date: datetime,
         end_date: datetime,
-        wallet_id: Optional[UUID] = None,
+        wallet_id: UUID | None = None,
         dry_run: bool = False,
     ) -> dict:
         """
@@ -218,9 +216,7 @@ class AdminService:
         )
 
         if wallet_id:
-            affected_groups = affected_groups.filter(
-                TransactionGroup.wallet_id == wallet_id
-            )
+            affected_groups = affected_groups.filter(TransactionGroup.wallet_id == wallet_id)
 
         affected_group_ids = [g.id for g in affected_groups.all()]
 
@@ -342,16 +338,10 @@ class AdminService:
 
         # Count affected records
         transaction_count = (
-            self.db.query(TransactionGroup)
-            .filter(TransactionGroup.vendor_id == source.id)
-            .count()
+            self.db.query(TransactionGroup).filter(TransactionGroup.vendor_id == source.id).count()
         )
 
-        alias_count = (
-            self.db.query(VendorAlias)
-            .filter(VendorAlias.vendor_id == source.id)
-            .count()
-        )
+        alias_count = self.db.query(VendorAlias).filter(VendorAlias.vendor_id == source.id).count()
 
         rule_count = (
             self.db.query(VendorCategoryRule)
@@ -406,9 +396,7 @@ class AdminService:
             stats["aliases_moved"] += 1
 
         # Delete source vendor's category rules (target keeps its rules)
-        self.db.execute(
-            delete(VendorCategoryRule).where(VendorCategoryRule.vendor_id == source.id)
-        )
+        self.db.execute(delete(VendorCategoryRule).where(VendorCategoryRule.vendor_id == source.id))
 
         # Delete source vendor
         self.db.delete(source)
@@ -417,9 +405,7 @@ class AdminService:
 
         return stats
 
-    def get_vendor_merge_preview(
-        self, source_vendor_id: UUID, target_vendor_id: UUID
-    ) -> dict:
+    def get_vendor_merge_preview(self, source_vendor_id: UUID, target_vendor_id: UUID) -> dict:
         """
         Preview what would happen if two vendors were merged.
 
@@ -438,9 +424,7 @@ class AdminService:
 
         # Get source vendor details
         source_txn_count = (
-            self.db.query(TransactionGroup)
-            .filter(TransactionGroup.vendor_id == source.id)
-            .count()
+            self.db.query(TransactionGroup).filter(TransactionGroup.vendor_id == source.id).count()
         )
 
         source_total = (
@@ -450,17 +434,11 @@ class AdminService:
             or 0
         )
 
-        source_aliases = (
-            self.db.query(VendorAlias)
-            .filter(VendorAlias.vendor_id == source.id)
-            .all()
-        )
+        source_aliases = self.db.query(VendorAlias).filter(VendorAlias.vendor_id == source.id).all()
 
         # Get target vendor details
         target_txn_count = (
-            self.db.query(TransactionGroup)
-            .filter(TransactionGroup.vendor_id == target.id)
-            .count()
+            self.db.query(TransactionGroup).filter(TransactionGroup.vendor_id == target.id).count()
         )
 
         target_total = (
@@ -470,11 +448,7 @@ class AdminService:
             or 0
         )
 
-        target_aliases = (
-            self.db.query(VendorAlias)
-            .filter(VendorAlias.vendor_id == target.id)
-            .all()
-        )
+        target_aliases = self.db.query(VendorAlias).filter(VendorAlias.vendor_id == target.id).all()
 
         return {
             "source": {
@@ -534,9 +508,7 @@ class AdminService:
             # If no other evidence, delete the group too
             if other_evidence_count == 0:
                 group = (
-                    self.db.query(TransactionGroup)
-                    .filter(TransactionGroup.id == group_id)
-                    .first()
+                    self.db.query(TransactionGroup).filter(TransactionGroup.id == group_id).first()
                 )
                 if group:
                     self.db.delete(group)
@@ -588,9 +560,7 @@ class AdminService:
         total_vendors = self.db.query(Vendor).count()
 
         return {
-            "messages": {
-                status.value: count for status, count in message_stats
-            },
+            "messages": {status.value: count for status, count in message_stats},
             "total_messages": sum(count for _, count in message_stats),
             "transaction_groups": self.db.query(TransactionGroup).count(),
             "vendors": {

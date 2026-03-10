@@ -13,7 +13,6 @@ from app.schemas.budget import (
     BudgetCreateRequest,
     BudgetListResponse,
     BudgetProgressResponse,
-    BudgetResponse,
     BudgetSummaryResponse,
     BudgetUpdateRequest,
 )
@@ -43,7 +42,7 @@ async def create_budget(
             raise HTTPException(status_code=500, detail="Failed to create budget")
         return response
     except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e)) from None
 
 
 @router.get("", response_model=BudgetListResponse)

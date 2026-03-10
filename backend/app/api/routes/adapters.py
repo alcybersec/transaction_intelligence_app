@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
 from app.adapters import get_adapter_registry
+from app.api.deps import get_current_user, get_db
 from app.db.models import Institution, User
 from app.services.parsing import ParsingService
 
@@ -75,8 +75,12 @@ class InstitutionConfigUpdate(BaseModel):
     """Request model for updating institution config."""
 
     parse_mode: str | None = Field(None, description="Default parsing mode: regex, ollama, hybrid")
-    sms_parse_mode: str | None = Field(None, description="SMS-specific parsing mode (overrides default)")
-    email_parse_mode: str | None = Field(None, description="Email-specific parsing mode (overrides default)")
+    sms_parse_mode: str | None = Field(
+        None, description="SMS-specific parsing mode (overrides default)"
+    )
+    email_parse_mode: str | None = Field(
+        None, description="Email-specific parsing mode (overrides default)"
+    )
     is_active: bool | None = Field(None, description="Whether institution is active")
     sms_sender_patterns: list[str] | None = Field(None, description="SMS sender patterns")
     email_sender_patterns: list[str] | None = Field(None, description="Email sender patterns")
@@ -96,10 +100,7 @@ def list_adapters(
     adapters = registry.get_all_adapter_info()
 
     return AdapterListResponse(
-        adapters=[
-            AdapterInfoResponse(**adapter.to_dict())
-            for adapter in adapters
-        ],
+        adapters=[AdapterInfoResponse(**adapter.to_dict()) for adapter in adapters],
         total=len(adapters),
     )
 
@@ -163,11 +164,7 @@ def get_adapter_config(
         )
 
     # Get institution from database
-    institution = (
-        db.query(Institution)
-        .filter(Institution.name == institution_name)
-        .first()
-    )
+    institution = db.query(Institution).filter(Institution.name == institution_name).first()
 
     # Return defaults from adapter if no DB record
     if not institution:
@@ -193,9 +190,7 @@ def get_adapter_config(
         "email_parse_mode": institution.email_parse_mode,
         "is_active": institution.is_active,
         "sms_sender_patterns": (
-            json.loads(institution.sms_sender_patterns)
-            if institution.sms_sender_patterns
-            else []
+            json.loads(institution.sms_sender_patterns) if institution.sms_sender_patterns else []
         ),
         "email_sender_patterns": (
             json.loads(institution.email_sender_patterns)
@@ -232,11 +227,7 @@ def update_adapter_config(
     import json
 
     # Get or create institution record
-    institution = (
-        db.query(Institution)
-        .filter(Institution.name == institution_name)
-        .first()
-    )
+    institution = db.query(Institution).filter(Institution.name == institution_name).first()
 
     if not institution:
         institution = Institution(

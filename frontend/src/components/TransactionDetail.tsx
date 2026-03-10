@@ -15,7 +15,7 @@ import {
   Save,
   X,
 } from 'lucide-react'
-import { fetchTransaction, updateTransactionNotes, TransactionDetail as TransactionDetailType } from '../api/transactions'
+import { fetchTransaction, updateTransactionNotes } from '../api/transactions'
 
 interface TransactionDetailProps {
   transactionId: string

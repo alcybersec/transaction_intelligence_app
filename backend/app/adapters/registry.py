@@ -6,7 +6,6 @@ and provides methods to look them up by institution name.
 """
 
 import importlib
-import pkgutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -34,7 +33,7 @@ class AdapterRegistry:
     """
 
     def __init__(self):
-        self._adapters: dict[str, "BankAdapter"] = {}
+        self._adapters: dict[str, BankAdapter] = {}
         self._discovered = False
 
     def register(self, adapter: "BankAdapter") -> None:
@@ -49,13 +48,9 @@ class AdapterRegistry:
         """
         name = adapter.institution_name
         if name in self._adapters:
-            logger.warning(
-                f"Adapter '{name}' already registered, replacing with new instance"
-            )
+            logger.warning(f"Adapter '{name}' already registered, replacing with new instance")
         self._adapters[name] = adapter
-        logger.info(
-            f"Registered adapter: {adapter.display_name} ({name}) v{adapter.version}"
-        )
+        logger.info(f"Registered adapter: {adapter.display_name} ({name}) v{adapter.version}")
 
     def unregister(self, institution_name: str) -> bool:
         """

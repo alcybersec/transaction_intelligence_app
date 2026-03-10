@@ -1,7 +1,7 @@
 """Parsing service for extracting transaction data from messages."""
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 
 from sqlalchemy.orm import Session
@@ -17,11 +17,6 @@ logger = get_logger(__name__)
 
 # Legacy parser imports for backwards compatibility
 # These are now in app.adapters.mashreq.parsers
-from app.adapters.mashreq.parsers import (
-    MashreqAccountCreditParser,
-    MashreqCardDebitParser,
-    MashreqCardPurchaseParser,
-)
 
 
 class ParsingService:
@@ -99,16 +94,14 @@ class ParsingService:
             inst = (
                 self.db.query(Institution)
                 .filter(Institution.name == adapter.institution_name)
-                .filter(Institution.is_active == True)
+                .filter(Institution.is_active.is_(True))
                 .first()
             )
             if inst:
                 return inst
 
             # Create institution record if adapter found but no DB record
-            logger.info(
-                f"Creating institution record for adapter: {adapter.institution_name}"
-            )
+            logger.info(f"Creating institution record for adapter: {adapter.institution_name}")
             inst = Institution(
                 name=adapter.institution_name,
                 display_name=adapter.display_name,
@@ -122,9 +115,7 @@ class ParsingService:
             return inst
 
         # Fall back to database-based detection
-        institutions = (
-            self.db.query(Institution).filter(Institution.is_active == True).all()
-        )
+        institutions = self.db.query(Institution).filter(Institution.is_active.is_(True)).all()
 
         for inst in institutions:
             # Check SMS sender patterns
@@ -149,9 +140,7 @@ class ParsingService:
 
         return None
 
-    def get_parsers_for_institution(
-        self, institution_name: str | None
-    ) -> list[ParserProtocol]:
+    def get_parsers_for_institution(self, institution_name: str | None) -> list[ParserProtocol]:
         """
         Get parsers for a specific institution.
 
@@ -189,13 +178,9 @@ class ParsingService:
             Tuple of (ParsedTransaction or None, error message or None)
         """
         if mode == ParseMode.REGEX:
-            return self._parse_regex(
-                message.sender, body, message.observed_at, institution_name
-            )
+            return self._parse_regex(message.sender, body, message.observed_at, institution_name)
         elif mode == ParseMode.OLLAMA:
-            return self._parse_ollama(
-                message.sender, body, message.observed_at, institution_name
-            )
+            return self._parse_ollama(message.sender, body, message.observed_at, institution_name)
         elif mode == ParseMode.HYBRID:
             # Try regex first, fall back to Ollama
             result, error = self._parse_regex(
@@ -204,12 +189,8 @@ class ParsingService:
             if result:
                 return result, None
             # Fall back to Ollama
-            logger.info(
-                f"Regex parsing failed, falling back to Ollama for message {message.id}"
-            )
-            return self._parse_ollama(
-                message.sender, body, message.observed_at, institution_name
-            )
+            logger.info(f"Regex parsing failed, falling back to Ollama for message {message.id}")
+            return self._parse_ollama(message.sender, body, message.observed_at, institution_name)
 
         return None, f"Unknown parse mode: {mode}"
 
@@ -422,11 +403,7 @@ class ParsingService:
 
         stats = {"success": False, "error": None, "reversal_linked": False}
 
-        message = (
-            self.db.query(Message)
-            .filter(Message.id == message_id)
-            .first()
-        )
+        message = self.db.query(Message).filter(Message.id == message_id).first()
 
         if not message:
             stats["error"] = f"Message {message_id} not found"
@@ -543,9 +520,7 @@ class ParsingService:
                     institution_name = institution.name
 
                 # Parse with institution context
-                parsed, error = self.parse_message(
-                    message, body, mode, institution_name
-                )
+                parsed, error = self.parse_message(message, body, mode, institution_name)
 
                 if parsed:
                     # Try to merge/create transaction
@@ -588,9 +563,7 @@ class ParsingService:
 
         return stats
 
-    def test_pattern(
-        self, sender: str, body: str, source: str = "sms"
-    ) -> dict:
+    def test_pattern(self, sender: str, body: str, source: str = "sms") -> dict:
         """
         Test which adapter/parser matches a sample message.
 
@@ -617,9 +590,9 @@ class ParsingService:
             result["institution_name"] = adapter.institution_name
 
             # Try each parser
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            observed_at = datetime.now(timezone.utc)
+            observed_at = datetime.now(UTC)
             for parser in adapter.get_parsers():
                 if parser.can_parse(sender, body):
                     result["parsers_matched"].append(parser.__class__.__name__)

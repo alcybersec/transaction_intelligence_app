@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-
 # ============== Institution Schemas ==============
 
 
@@ -78,7 +77,9 @@ class InstrumentResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
-    wallet_ids: list[UUID] = Field(default_factory=list, description="Wallets this instrument belongs to")
+    wallet_ids: list[UUID] = Field(
+        default_factory=list, description="Wallets this instrument belongs to"
+    )
 
     model_config = {"from_attributes": True}
 
@@ -97,7 +98,9 @@ class WalletCreateRequest(BaseModel):
     """Request to create a new wallet."""
 
     name: str = Field(..., description="Wallet name", min_length=1, max_length=255)
-    currency: str = Field(default="AED", description="ISO currency code", min_length=3, max_length=3)
+    currency: str = Field(
+        default="AED", description="ISO currency code", min_length=3, max_length=3
+    )
     instrument_ids: list[UUID] = Field(
         default_factory=list, description="Instruments to attach to this wallet"
     )
@@ -193,9 +196,7 @@ class WalletSummaryResponse(BaseModel):
     combined_balance_last: Decimal | None
     currency: str
     instrument_count: int
-    recent_transaction_count: int = Field(
-        default=0, description="Transactions in the last 30 days"
-    )
+    recent_transaction_count: int = Field(default=0, description="Transactions in the last 30 days")
     total_spent_this_month: Decimal = Field(
         default=Decimal("0"), description="Total debits this month"
     )

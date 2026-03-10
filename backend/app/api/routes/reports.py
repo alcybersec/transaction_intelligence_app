@@ -4,7 +4,7 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -223,7 +223,9 @@ async def export_categories_csv(
         wallet_id=wallet_uuid,
     )
 
-    filename = f"category_summary_{period_start.strftime('%Y%m%d')}_{period_end.strftime('%Y%m%d')}.csv"
+    filename = (
+        f"category_summary_{period_start.strftime('%Y%m%d')}_{period_end.strftime('%Y%m%d')}.csv"
+    )
 
     return Response(
         content=csv_content,
@@ -256,7 +258,9 @@ async def export_vendors_csv(
         limit=limit,
     )
 
-    filename = f"vendor_summary_{period_start.strftime('%Y%m%d')}_{period_end.strftime('%Y%m%d')}.csv"
+    filename = (
+        f"vendor_summary_{period_start.strftime('%Y%m%d')}_{period_end.strftime('%Y%m%d')}.csv"
+    )
 
     return Response(
         content=csv_content,

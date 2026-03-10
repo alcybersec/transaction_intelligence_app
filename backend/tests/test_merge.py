@@ -2,21 +2,12 @@
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
-
-import pytest
 
 from app.db.models import (
     EvidenceRole,
-    Message,
-    MessageSource,
-    ParseStatus,
     TransactionDirection,
-    TransactionEvidence,
-    TransactionGroup,
-    TransactionStatus,
-    Vendor,
 )
 from app.schemas.transaction import ParsedTransaction
 from app.services.merge import MergeEngine
@@ -43,7 +34,7 @@ class TestMergeEngine:
         # Mock no existing instrument/wallet
         mock_db.query.return_value.filter.return_value.first.return_value = None
 
-        engine = MergeEngine(mock_db, mock_vendor_service)
+        MergeEngine(mock_db, mock_vendor_service)
 
         # Create test message
         message = MagicMock()
@@ -51,7 +42,7 @@ class TestMergeEngine:
         message.observed_at = datetime(2024, 1, 15, 14, 30, tzinfo=UTC)
 
         # Create parsed transaction
-        parsed = ParsedTransaction(
+        ParsedTransaction(
             amount=Decimal("50.00"),
             currency="AED",
             direction="debit",
@@ -92,7 +83,7 @@ class TestMergeEngine:
         mock_db = MagicMock()
         mock_vendor_service = MagicMock()
 
-        engine = MergeEngine(mock_db, mock_vendor_service)
+        MergeEngine(mock_db, mock_vendor_service)
 
         # If we search for merge candidates with a reference_id,
         # and find a match, that should be returned as the sole candidate
@@ -174,7 +165,7 @@ class TestReversalDetection:
         # A valid reversal would have:
         reversal_amount = original_amount  # Same amount
         reversal_direction = TransactionDirection.CREDIT  # Opposite direction
-        reversal_vendor_id = original_vendor_id  # Same vendor
+        _ = original_vendor_id  # Same vendor
         reversal_date = datetime(2024, 1, 20, tzinfo=UTC)  # Within 30 days
 
         assert reversal_amount == original_amount

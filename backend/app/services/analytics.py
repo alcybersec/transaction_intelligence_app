@@ -4,18 +4,18 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, and_, case
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.models import (
     Category,
+    Message,
+    ParseStatus,
     TransactionDirection,
     TransactionGroup,
     TransactionStatus,
     Vendor,
     Wallet,
-    Message,
-    ParseStatus,
 )
 from app.schemas.analytics import (
     CategoryBreakdownResponse,
@@ -141,18 +141,15 @@ class AnalyticsService:
         end_dt = datetime.combine(period_end, datetime.max.time())
 
         # Query daily aggregates
-        query = (
-            self.db.query(
-                func.date(TransactionGroup.occurred_at).label("date"),
-                TransactionGroup.direction,
-                func.sum(TransactionGroup.amount).label("total"),
-                func.count(TransactionGroup.id).label("count"),
-            )
-            .filter(
-                TransactionGroup.occurred_at >= start_dt,
-                TransactionGroup.occurred_at <= end_dt,
-                TransactionGroup.status == TransactionStatus.POSTED,
-            )
+        query = self.db.query(
+            func.date(TransactionGroup.occurred_at).label("date"),
+            TransactionGroup.direction,
+            func.sum(TransactionGroup.amount).label("total"),
+            func.count(TransactionGroup.id).label("count"),
+        ).filter(
+            TransactionGroup.occurred_at >= start_dt,
+            TransactionGroup.occurred_at <= end_dt,
+            TransactionGroup.status == TransactionStatus.POSTED,
         )
 
         if wallet_id:

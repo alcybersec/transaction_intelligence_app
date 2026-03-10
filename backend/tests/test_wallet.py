@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.db.models import Institution, Instrument, InstrumentType, Wallet, WalletInstrument
+from app.db.models import Instrument, InstrumentType, Wallet, WalletInstrument
 from app.services.wallet import WalletService
 
 
@@ -21,7 +21,7 @@ class TestInstrumentOperations:
 
         institution_id = uuid4()
 
-        with patch.object(service, 'db') as db:
+        with patch.object(service, "db") as db:
             db.add = MagicMock()
             db.commit = MagicMock()
             db.refresh = MagicMock()
@@ -34,7 +34,7 @@ class TestInstrumentOperations:
 
             db.refresh.side_effect = mock_refresh
 
-            instrument = service.create_instrument(
+            service.create_instrument(
                 institution_id=institution_id,
                 instrument_type="card",
                 display_name="Test Credit Card",
@@ -52,7 +52,7 @@ class TestInstrumentOperations:
 
         institution_id = uuid4()
 
-        with patch.object(service, 'db') as db:
+        with patch.object(service, "db") as db:
             db.add = MagicMock()
             db.commit = MagicMock()
             db.refresh = MagicMock()
@@ -64,7 +64,7 @@ class TestInstrumentOperations:
 
             db.refresh.side_effect = mock_refresh
 
-            instrument = service.create_instrument(
+            service.create_instrument(
                 institution_id=institution_id,
                 instrument_type="account",
                 display_name="Test Savings Account",
@@ -86,7 +86,7 @@ class TestInstrumentOperations:
 
         mock_db.query.return_value.filter.return_value.first.return_value = mock_instrument
 
-        result = service.update_instrument(
+        service.update_instrument(
             instrument_id=instrument_id,
             display_name="New Name",
         )
@@ -142,7 +142,7 @@ class TestWalletOperations:
         mock_db = MagicMock()
         service = WalletService(mock_db)
 
-        with patch.object(service, 'db') as db:
+        with patch.object(service, "db") as db:
             db.add = MagicMock()
             db.flush = MagicMock()
             db.commit = MagicMock()
@@ -155,7 +155,7 @@ class TestWalletOperations:
 
             db.refresh.side_effect = mock_refresh
 
-            wallet = service.create_wallet(
+            service.create_wallet(
                 name="Test Wallet",
                 currency="AED",
             )
@@ -170,7 +170,7 @@ class TestWalletOperations:
 
         instrument_ids = [uuid4(), uuid4()]
 
-        with patch.object(service, 'db') as db:
+        with patch.object(service, "db") as db:
             add_calls = []
             db.add = lambda x: add_calls.append(x)
             db.flush = MagicMock()
@@ -184,7 +184,7 @@ class TestWalletOperations:
 
             db.refresh.side_effect = mock_refresh
 
-            wallet = service.create_wallet(
+            service.create_wallet(
                 name="Test Wallet",
                 currency="AED",
                 instrument_ids=instrument_ids,
@@ -205,7 +205,7 @@ class TestWalletOperations:
 
         mock_db.query.return_value.filter.return_value.first.return_value = mock_wallet
 
-        result = service.update_wallet(
+        service.update_wallet(
             wallet_id=wallet_id,
             name="New Name",
         )
@@ -387,7 +387,9 @@ class TestBalanceOperations:
         service = WalletService(mock_db)
 
         # No transaction with balance
-        mock_db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
+        mock_db.query.return_value.filter.return_value.order_by.return_value.first.return_value = (
+            None
+        )
 
         balance = service.recalculate_wallet_balance(uuid4())
 
@@ -406,7 +408,9 @@ class TestInstitutionOperations:
             MagicMock(id=uuid4(), name="Bank1", is_active=True),
             MagicMock(id=uuid4(), name="Bank2", is_active=True),
         ]
-        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = mock_institutions
+        mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = (
+            mock_institutions
+        )
 
         institutions = service.list_institutions(active_only=True)
 
@@ -447,10 +451,12 @@ class TestDashboardSummary:
         mock_wallet.wallet_instruments = []
 
         # Setup query mocks
-        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_wallet
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = (
+            mock_wallet
+        )
         mock_db.query.return_value.filter.return_value.scalar.return_value = 10
 
-        with patch.object(service, 'get_wallet', return_value=mock_wallet):
+        with patch.object(service, "get_wallet", return_value=mock_wallet):
             summary = service.get_wallet_summary(wallet_id, days=30)
 
         assert "id" in summary
@@ -485,11 +491,33 @@ class TestDashboardSummary:
             ),
         ]
 
-        with patch.object(service, 'list_wallets', return_value=mock_wallets):
-            with patch.object(service, 'get_wallet_summary', side_effect=[
-                {"id": mock_wallets[0].id, "name": "Wallet1", "combined_balance_last": Decimal("5000.00"), "currency": "AED", "instrument_count": 1, "recent_transaction_count": 5, "total_spent_this_month": Decimal("500"), "total_income_this_month": Decimal("0")},
-                {"id": mock_wallets[1].id, "name": "Wallet2", "combined_balance_last": Decimal("3000.00"), "currency": "AED", "instrument_count": 1, "recent_transaction_count": 3, "total_spent_this_month": Decimal("300"), "total_income_this_month": Decimal("0")},
-            ]):
+        with patch.object(service, "list_wallets", return_value=mock_wallets):
+            with patch.object(
+                service,
+                "get_wallet_summary",
+                side_effect=[
+                    {
+                        "id": mock_wallets[0].id,
+                        "name": "Wallet1",
+                        "combined_balance_last": Decimal("5000.00"),
+                        "currency": "AED",
+                        "instrument_count": 1,
+                        "recent_transaction_count": 5,
+                        "total_spent_this_month": Decimal("500"),
+                        "total_income_this_month": Decimal("0"),
+                    },
+                    {
+                        "id": mock_wallets[1].id,
+                        "name": "Wallet2",
+                        "combined_balance_last": Decimal("3000.00"),
+                        "currency": "AED",
+                        "instrument_count": 1,
+                        "recent_transaction_count": 3,
+                        "total_spent_this_month": Decimal("300"),
+                        "total_income_this_month": Decimal("0"),
+                    },
+                ],
+            ):
                 summary = service.get_dashboard_summary()
 
         assert "wallets" in summary

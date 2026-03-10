@@ -49,9 +49,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(user_id: UUID, expires_delta: timedelta | None = None) -> str:
     """Create a JWT access token."""
-    expire = datetime.utcnow() + (
-        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode = {
         "sub": str(user_id),
         "type": "access",
@@ -127,9 +125,7 @@ class AuthService:
         """Record a failed login attempt."""
         user.failed_login_attempts += 1
         if user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
-            user.locked_until = datetime.utcnow() + timedelta(
-                minutes=LOCKOUT_DURATION_MINUTES
-            )
+            user.locked_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
         self.db.commit()
 
     def _reset_failed_attempts(self, user: User) -> None:
@@ -214,9 +210,7 @@ class AuthService:
             "token_type": "bearer",
         }
 
-    def change_password(
-        self, user_id: UUID, current_password: str, new_password: str
-    ) -> None:
+    def change_password(self, user_id: UUID, current_password: str, new_password: str) -> None:
         """Change user password."""
         user = self.get_user_by_id(user_id)
         if not user:

@@ -42,7 +42,7 @@ export function Chat() {
   const sendMessage = useMutation({
     mutationFn: (question: string) =>
       sendChatMessage(question, undefined, getConversationHistory()),
-    onSuccess: (response: ChatResponse, question: string) => {
+    onSuccess: (response: ChatResponse) => {
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',

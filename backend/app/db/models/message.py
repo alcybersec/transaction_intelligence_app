@@ -20,14 +20,14 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 
-class MessageSource(str, enum.Enum):
+class MessageSource(enum.StrEnum):
     """Source type for messages."""
 
     SMS = "sms"
     EMAIL = "email"
 
 
-class ParseStatus(str, enum.Enum):
+class ParseStatus(enum.StrEnum):
     """Parsing status for messages."""
 
     PENDING = "pending"
@@ -36,7 +36,7 @@ class ParseStatus(str, enum.Enum):
     NEEDS_REVIEW = "needs_review"
 
 
-class ParseMode(str, enum.Enum):
+class ParseMode(enum.StrEnum):
     """Parsing mode used for extraction."""
 
     REGEX = "regex"
