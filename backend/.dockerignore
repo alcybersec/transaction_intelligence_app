@@ -25,7 +25,6 @@ env/
 Dockerfile
 .dockerignore
 
-# Tests
-tests/
+# Test artifacts
 htmlcov/
 .coverage
