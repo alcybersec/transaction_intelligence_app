@@ -8,7 +8,7 @@ on:
 jobs:
   backend-lint:
     name: Backend Lint
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab]
     defaults:
       run:
         working-directory: backend
@@ -33,7 +33,7 @@ jobs:
 
   backend-test:
     name: Backend Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab]
     defaults:
       run:
         working-directory: backend
@@ -55,7 +55,7 @@ jobs:
 
   worker-lint:
     name: Worker Lint
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab]
     defaults:
       run:
         working-directory: worker
@@ -80,7 +80,7 @@ jobs:
 
   worker-test:
     name: Worker Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab]
     defaults:
       run:
         working-directory: worker
@@ -102,7 +102,7 @@ jobs:
 
   frontend-lint:
     name: Frontend Lint
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab]
     defaults:
       run:
         working-directory: frontend
@@ -124,7 +124,7 @@ jobs:
 
   frontend-test:
     name: Frontend Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab]
     defaults:
       run:
         working-directory: frontend
@@ -146,7 +146,7 @@ jobs:
 
   docker-build:
     name: Docker Build Test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab]
     steps:
       - uses: actions/checkout@v4
 
