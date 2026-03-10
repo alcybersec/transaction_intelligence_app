@@ -139,15 +139,14 @@ class TestAdminService:
         mock_target.id = target_id
         mock_target.canonical_name = "Target Vendor"
 
-        def mock_filter(condition):
-            result = MagicMock()
-            result.first.return_value = mock_source if "source" in str(condition) else mock_target
-            result.count.return_value = 10
-            result.all.return_value = []
-            return result
+        mock_filter_result = MagicMock()
+        mock_filter_result.first.return_value = mock_source
+        mock_filter_result.count.return_value = 10
+        mock_filter_result.all.return_value = []
+        mock_filter_result.scalar.return_value = 1000.0
+        mock_filter_result.filter.return_value = mock_filter_result
 
-        mock_db.query.return_value.filter = mock_filter
-        mock_db.query.return_value.filter.return_value.scalar.return_value = 1000.0
+        mock_db.query.return_value.filter.return_value = mock_filter_result
 
         service = AdminService(mock_db)
 
