@@ -288,6 +288,65 @@ class CategorizationService:
         logger.info(f"Rejected suggestion {suggestion_id}")
         return True
 
+    def accept_all_pending(self) -> dict[str, int]:
+        """
+        Accept all pending category suggestions at once.
+
+        Returns:
+            Dict with accepted, failed, and rules_created counts
+        """
+        stats = {"accepted": 0, "failed": 0, "rules_created": 0}
+
+        pending = (
+            self.db.query(CategorySuggestion).filter(CategorySuggestion.status == "pending").all()
+        )
+
+        for suggestion in pending:
+            try:
+                suggestion.status = "accepted"
+                suggestion.updated_at = datetime.utcnow()
+
+                # Create or update rule
+                existing_rule = (
+                    self.db.query(VendorCategoryRule)
+                    .filter(
+                        VendorCategoryRule.vendor_id == suggestion.vendor_id,
+                        VendorCategoryRule.category_id == suggestion.suggested_category_id,
+                    )
+                    .first()
+                )
+
+                if existing_rule:
+                    existing_rule.enabled = True
+                    existing_rule.updated_at = datetime.utcnow()
+                else:
+                    rule = VendorCategoryRule(
+                        vendor_id=suggestion.vendor_id,
+                        category_id=suggestion.suggested_category_id,
+                        priority=0,
+                        enabled=True,
+                    )
+                    self.db.add(rule)
+
+                # Apply category to uncategorized transactions for this vendor
+                self.db.query(TransactionGroup).filter(
+                    TransactionGroup.vendor_id == suggestion.vendor_id,
+                    TransactionGroup.category_id.is_(None),
+                ).update({"category_id": suggestion.suggested_category_id})
+
+                stats["accepted"] += 1
+                stats["rules_created"] += 1
+            except Exception as e:
+                logger.error(f"Failed to accept suggestion {suggestion.id}: {e}")
+                stats["failed"] += 1
+
+        self.db.commit()
+        logger.info(
+            f"Bulk accepted suggestions: {stats['accepted']} accepted, "
+            f"{stats['failed']} failed, {stats['rules_created']} rules created"
+        )
+        return stats
+
     def get_pending_suggestions(
         self,
         limit: int = 50,

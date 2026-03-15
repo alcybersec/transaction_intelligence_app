@@ -122,7 +122,7 @@ async def list_vendors(
     category_id: UUID | None = Query(None, description="Filter by category"),
     has_transactions: bool | None = Query(None, description="Filter by having transactions"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=100),
+    page_size: int = Query(50, ge=1, le=200),
 ) -> VendorListResponse:
     """
     List vendors with optional filters.

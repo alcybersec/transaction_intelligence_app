@@ -14,8 +14,11 @@ import {
   Edit2,
   Save,
   X,
+  Tag,
 } from 'lucide-react'
 import { fetchTransaction, updateTransactionNotes } from '../api/transactions'
+import { fetchCategories } from '../api/categories'
+import { setVendorCategoryRule } from '../api/vendors'
 
 interface TransactionDetailProps {
   transactionId: string
@@ -26,6 +29,7 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
   const queryClient = useQueryClient()
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [notesValue, setNotesValue] = useState('')
+  const [isEditingCategory, setIsEditingCategory] = useState(false)
 
   const {
     data: transaction,
@@ -36,6 +40,22 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
     queryFn: () => fetchTransaction(transactionId, true),
     onSuccess: (data) => {
       setNotesValue(data.notes || '')
+    },
+  })
+
+  const { data: categories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+  })
+
+  const categoryMutation = useMutation({
+    mutationFn: ({ vendorId, categoryId }: { vendorId: string; categoryId: string }) =>
+      setVendorCategoryRule(vendorId, categoryId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transaction', transactionId] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['vendors'] })
+      setIsEditingCategory(false)
     },
   })
 
@@ -140,7 +160,46 @@ export function TransactionDetail({ transactionId, onBack }: TransactionDetailPr
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-muted-foreground">Category</span>
-            <p className="font-medium">{transaction.category_name || 'Uncategorized'}</p>
+            {isEditingCategory && transaction.vendor_id ? (
+              <select
+                value={transaction.category_id || ''}
+                onChange={(e) => {
+                  if (e.target.value && transaction.vendor_id) {
+                    categoryMutation.mutate({ vendorId: transaction.vendor_id, categoryId: e.target.value })
+                  }
+                }}
+                className="w-full mt-1 px-2 py-1 rounded-md border border-input bg-background text-sm"
+                autoFocus
+                onBlur={() => setIsEditingCategory(false)}
+              >
+                <option value="">Select category...</option>
+                {categories?.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <button
+                onClick={() => transaction.vendor_id && setIsEditingCategory(true)}
+                className={`flex items-center gap-1.5 font-medium ${
+                  transaction.vendor_id
+                    ? 'hover:text-primary cursor-pointer'
+                    : 'cursor-default'
+                }`}
+                disabled={!transaction.vendor_id}
+                title={transaction.vendor_id ? 'Click to change category' : 'No vendor linked'}
+              >
+                <Tag className="h-3.5 w-3.5" />
+                {transaction.category_name || 'Uncategorized'}
+                {transaction.vendor_id && (
+                  <span className="text-xs text-muted-foreground font-normal ml-1">(edit)</span>
+                )}
+              </button>
+            )}
+            {categoryMutation.isPending && (
+              <span className="text-xs text-muted-foreground">Saving...</span>
+            )}
           </div>
           <div>
             <span className="text-muted-foreground">Status</span>

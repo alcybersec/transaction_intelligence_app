@@ -1,6 +1,7 @@
 """Database models package."""
 
 from app.db.models.budget import Budget
+from app.db.models.chat import ChatMessage, ChatSession
 from app.db.models.institution import Institution, Instrument, InstrumentType
 from app.db.models.message import Message, MessageSource, ParseMode, ParseStatus
 from app.db.models.report import Report, ReportGeneratedBy
@@ -53,4 +54,7 @@ __all__ = [
     # Report
     "Report",
     "ReportGeneratedBy",
+    # Chat
+    "ChatSession",
+    "ChatMessage",
 ]

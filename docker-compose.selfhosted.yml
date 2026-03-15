@@ -1,0 +1,29 @@
+# Self-hosted production overrides — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.selfhosted.yml up -d
+#
+# Uses pre-built GHCR images, removes dev bind mounts, adds restart policies.
+# Set GHCR_OWNER (default: alcybersec) and IMAGE_TAG (default: latest) to
+# control which images are used.
+
+services:
+  api:
+    image: ghcr.io/${GHCR_OWNER:-alcybersec}/txn-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}
+    volumes: !override []
+
+  worker:
+    image: ghcr.io/${GHCR_OWNER:-alcybersec}/txn-worker:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    volumes: !override []
+
+  frontend:
+    image: ghcr.io/${GHCR_OWNER:-alcybersec}/txn-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    volumes: !override []
+
+  postgres:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Settings,
@@ -15,6 +15,7 @@ import { useAuth } from './contexts/AuthContext'
 import { LoginPage } from './components/LoginPage'
 import { WalletSettings } from './components/WalletSettings'
 import { TransactionList } from './components/TransactionList'
+import type { TransactionFilters } from './api/transactions'
 import { TransactionDetail } from './components/TransactionDetail'
 import { CategoriesManager } from './components/CategoriesManager'
 import { VendorList } from './components/VendorList'
@@ -39,6 +40,13 @@ function AuthenticatedApp() {
   const { user, logout } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
+  const [transactionFilters, setTransactionFilters] = useState<TransactionFilters>({
+    page: 1,
+    page_size: 20,
+  })
+  const handleTransactionFiltersChange = useCallback((f: TransactionFilters) => {
+    setTransactionFilters(f)
+  }, [])
 
   const {
     data: health,
@@ -219,6 +227,8 @@ function AuthenticatedApp() {
             ) : (
               <TransactionList
                 onSelectTransaction={(id) => setSelectedTransactionId(id)}
+                filters={transactionFilters}
+                onFiltersChange={handleTransactionFiltersChange}
               />
             )}
           </div>
@@ -243,7 +253,7 @@ function AuthenticatedApp() {
         )}
 
         {activeTab === 'chat' && (
-          <div className="max-w-3xl">
+          <div className="max-w-4xl">
             <div className="mb-6">
               <h2 className="text-xl font-semibold">AI Assistant</h2>
               <p className="text-muted-foreground">

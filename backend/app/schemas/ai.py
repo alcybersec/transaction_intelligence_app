@@ -80,6 +80,14 @@ class SuggestionActionResponse(BaseModel):
     rule_created: bool = False
 
 
+class BulkAcceptResponse(BaseModel):
+    """Response for bulk accept of all pending suggestions."""
+
+    accepted: int
+    failed: int
+    rules_created: int
+
+
 # === AI Chat ===
 
 
@@ -97,6 +105,9 @@ class ChatRequest(BaseModel):
     wallet_id: UUID | None = Field(default=None, description="Optional wallet context")
     conversation_history: list[ChatMessage] = Field(
         default_factory=list, description="Recent conversation history for context"
+    )
+    session_id: UUID | None = Field(
+        default=None, description="Chat session ID for persistent conversations"
     )
 
 
@@ -116,6 +127,64 @@ class ChatResponse(BaseModel):
     query_info: ChatQueryInfo | None = None
     data: dict[str, Any] | None = None
     error: str | None = None
+    session_id: UUID | None = None
+
+
+# === Chat Sessions ===
+
+
+class ChatSessionCreate(BaseModel):
+    """Request to create a new chat session."""
+
+    title: str = Field(default="New Chat", max_length=255)
+
+
+class ChatMessageResponse(BaseModel):
+    """Response for a single chat message."""
+
+    id: UUID
+    session_id: UUID
+    role: str
+    content: str
+    highlights: list[str] | None = None
+    chart_type: str | None = None
+    query_info: ChatQueryInfo | None = None
+    data: dict[str, Any] | None = None
+    error: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ChatSessionResponse(BaseModel):
+    """Response for a chat session summary."""
+
+    id: UUID
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    message_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class ChatSessionDetailResponse(BaseModel):
+    """Response for a chat session with messages."""
+
+    id: UUID
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    messages: list[ChatMessageResponse]
+
+    model_config = {"from_attributes": True}
+
+
+class ChatSessionListResponse(BaseModel):
+    """Response for listing chat sessions."""
+
+    sessions: list[ChatSessionResponse]
+    total: int
 
 
 # === AI Parsing ===

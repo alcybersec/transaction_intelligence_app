@@ -21,6 +21,7 @@ import { fetchCategories } from '../api/categories'
 import {
   fetchSuggestions,
   acceptSuggestion,
+  acceptAllSuggestions,
   rejectSuggestion,
   generateSuggestion,
   CategorySuggestion,
@@ -93,6 +94,16 @@ export function VendorList({ onSelectVendor }: VendorListProps) {
     },
   })
 
+  // Accept all suggestions mutation
+  const acceptAllMutation = useMutation({
+    mutationFn: () => acceptAllSuggestions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vendors'] })
+      queryClient.invalidateQueries({ queryKey: ['ai-suggestions'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    },
+  })
+
   // Generate suggestion mutation
   const generateMutation = useMutation({
     mutationFn: (vendorId: string) => generateSuggestion(vendorId, true),
@@ -143,9 +154,26 @@ export function VendorList({ onSelectVendor }: VendorListProps) {
       {showSuggestions && suggestionsData && suggestionsData.total > 0 && (
         <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
           <Brain className="h-5 w-5 text-primary" />
-          <span className="text-sm">
+          <span className="text-sm flex-1">
             <strong>{suggestionsData.total}</strong> AI category suggestions pending review
           </span>
+          <button
+            onClick={() => acceptAllMutation.mutate()}
+            disabled={acceptAllMutation.isPending}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 transition-colors"
+          >
+            {acceptAllMutation.isPending ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Accepting...
+              </>
+            ) : (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                Accept All
+              </>
+            )}
+          </button>
         </div>
       )}
 
@@ -273,10 +301,21 @@ export function VendorList({ onSelectVendor }: VendorListProps) {
 
           {/* Pagination */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
-              Showing {(data.page - 1) * data.page_size + 1} -{' '}
-              {Math.min(data.page * data.page_size, data.total)} of {data.total}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                Showing {(data.page - 1) * data.page_size + 1} -{' '}
+                {Math.min(data.page * data.page_size, data.total)} of {data.total}
+              </span>
+              <select
+                value={filters.page_size || 20}
+                onChange={(e) => setFilters((prev) => ({ ...prev, page_size: Number(e.target.value), page: 1 }))}
+                className="px-2 py-1 rounded-md border border-input bg-background text-sm"
+              >
+                {[20, 50, 100, 200].map((size) => (
+                  <option key={size} value={size}>{size} / page</option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setFilters((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))}

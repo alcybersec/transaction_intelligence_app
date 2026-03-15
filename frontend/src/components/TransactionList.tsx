@@ -20,13 +20,33 @@ import { fetchWallets } from '../api/wallets'
 
 interface TransactionListProps {
   onSelectTransaction: (id: string) => void
+  filters?: TransactionFilters
+  onFiltersChange?: (filters: TransactionFilters) => void
 }
 
-export function TransactionList({ onSelectTransaction }: TransactionListProps) {
-  const [filters, setFilters] = useState<TransactionFilters>({
+export function TransactionList({ onSelectTransaction, filters: externalFilters, onFiltersChange }: TransactionListProps) {
+  const [internalFilters, setInternalFilters] = useState<TransactionFilters>({
     page: 1,
     page_size: 20,
   })
+
+  const filters = externalFilters ?? internalFilters
+  const setFilters = onFiltersChange
+    ? (updater: TransactionFilters | ((prev: TransactionFilters) => TransactionFilters)) => {
+        if (typeof updater === 'function') {
+          onFiltersChange(updater(filters))
+        } else {
+          onFiltersChange(updater)
+        }
+      }
+    : (updater: TransactionFilters | ((prev: TransactionFilters) => TransactionFilters)) => {
+        if (typeof updater === 'function') {
+          setInternalFilters(updater)
+        } else {
+          setInternalFilters(updater)
+        }
+      }
+
   const [showFilters, setShowFilters] = useState(false)
 
   // Fetch transactions
@@ -61,7 +81,7 @@ export function TransactionList({ onSelectTransaction }: TransactionListProps) {
   }
 
   const clearFilters = () => {
-    setFilters({ page: 1, page_size: 20 })
+    setFilters({ page: 1, page_size: filters.page_size || 20 })
   }
 
   const hasActiveFilters = !!(
@@ -349,10 +369,21 @@ export function TransactionList({ onSelectTransaction }: TransactionListProps) {
 
           {/* Pagination */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
-              Showing {(data.page - 1) * data.page_size + 1} -{' '}
-              {Math.min(data.page * data.page_size, data.total)} of {data.total}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                Showing {(data.page - 1) * data.page_size + 1} -{' '}
+                {Math.min(data.page * data.page_size, data.total)} of {data.total}
+              </span>
+              <select
+                value={filters.page_size || 20}
+                onChange={(e) => setFilters((prev) => ({ ...prev, page_size: Number(e.target.value), page: 1 }))}
+                className="px-2 py-1 rounded-md border border-input bg-background text-sm"
+              >
+                {[20, 50, 100, 200].map((size) => (
+                  <option key={size} value={size}>{size} / page</option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setFilters((prev) => ({ ...prev, page: (prev.page || 1) - 1 }))}

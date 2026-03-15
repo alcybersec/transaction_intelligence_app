@@ -3,19 +3,36 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
-from app.db.models import Category, Institution, Message, ParseMode, User, Vendor
+from app.db.models import (
+    Category,
+    ChatMessage,
+    ChatSession,
+    Institution,
+    Message,
+    ParseMode,
+    User,
+    Vendor,
+)
 from app.schemas.ai import (
     AcceptSuggestionRequest,
     AISettingsResponse,
     BatchSuggestRequest,
     BatchSuggestResponse,
+    BulkAcceptResponse,
     CategorySuggestionListResponse,
     CategorySuggestionResponse,
+    ChatMessageResponse,
+    ChatQueryInfo,
     ChatRequest,
     ChatResponse,
+    ChatSessionCreate,
+    ChatSessionDetailResponse,
+    ChatSessionListResponse,
+    ChatSessionResponse,
     OllamaStatusResponse,
     ParseModeResponse,
     ParseModeUpdateRequest,
@@ -177,6 +194,22 @@ def batch_generate_suggestions(
     return BatchSuggestResponse(**stats)
 
 
+@router.post("/suggestions/accept-all", response_model=BulkAcceptResponse)
+def accept_all_suggestions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Accept all pending category suggestions at once."""
+    service = CategorizationService(db)
+    stats = service.accept_all_pending()
+
+    return BulkAcceptResponse(
+        accepted=stats["accepted"],
+        failed=stats["failed"],
+        rules_created=stats["rules_created"],
+    )
+
+
 @router.post("/suggestions/{suggestion_id}/accept", response_model=SuggestionActionResponse)
 def accept_suggestion(
     suggestion_id: UUID,
@@ -254,6 +287,135 @@ def reject_suggestion(
 # === AI Chat ===
 
 
+@router.get("/chat/sessions", response_model=ChatSessionListResponse)
+def list_chat_sessions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List user's chat sessions, most recent first."""
+    sessions = (
+        db.query(ChatSession)
+        .filter(ChatSession.user_id == current_user.id)
+        .order_by(ChatSession.updated_at.desc())
+        .all()
+    )
+
+    response_items = []
+    for s in sessions:
+        msg_count = (
+            db.query(func.count(ChatMessage.id)).filter(ChatMessage.session_id == s.id).scalar()
+        ) or 0
+        response_items.append(
+            ChatSessionResponse(
+                id=s.id,
+                title=s.title,
+                created_at=s.created_at,
+                updated_at=s.updated_at,
+                message_count=msg_count,
+            )
+        )
+
+    return ChatSessionListResponse(sessions=response_items, total=len(response_items))
+
+
+@router.post("/chat/sessions", response_model=ChatSessionResponse)
+def create_chat_session(
+    request: ChatSessionCreate = ChatSessionCreate(),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a new chat session."""
+    session = ChatSession(
+        user_id=current_user.id,
+        title=request.title,
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+
+    return ChatSessionResponse(
+        id=session.id,
+        title=session.title,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        message_count=0,
+    )
+
+
+@router.get("/chat/sessions/{session_id}", response_model=ChatSessionDetailResponse)
+def get_chat_session(
+    session_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get a chat session with its messages."""
+    session = (
+        db.query(ChatSession)
+        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+        .first()
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+
+    messages = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session_id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
+    )
+
+    msg_responses = []
+    for m in messages:
+        qi = None
+        if m.query_info:
+            qi = ChatQueryInfo(
+                type=m.query_info.get("type"),
+                explanation=m.query_info.get("explanation"),
+            )
+        msg_responses.append(
+            ChatMessageResponse(
+                id=m.id,
+                session_id=m.session_id,
+                role=m.role,
+                content=m.content,
+                highlights=m.highlights,
+                chart_type=m.chart_type,
+                query_info=qi,
+                data=m.data,
+                error=m.error,
+                created_at=m.created_at,
+            )
+        )
+
+    return ChatSessionDetailResponse(
+        id=session.id,
+        title=session.title,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        messages=msg_responses,
+    )
+
+
+@router.delete("/chat/sessions/{session_id}")
+def delete_chat_session(
+    session_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a chat session and its messages."""
+    session = (
+        db.query(ChatSession)
+        .filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
+        .first()
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+
+    db.delete(session)
+    db.commit()
+    return {"message": "Session deleted"}
+
+
 @router.post("/chat", response_model=ChatResponse)
 def chat(
     request: ChatRequest,
@@ -261,23 +423,79 @@ def chat(
     current_user: User = Depends(get_current_user),
 ):
     """Ask a question about your spending."""
+    from datetime import datetime as dt
+
     service = ChatService(db)
 
     if not service.is_available():
         return ChatResponse(
             answer="AI chat is not available. Please configure Ollama to use this feature.",
             error="ollama_not_configured",
+            session_id=request.session_id,
         )
 
-    history = [
-        {"role": m.role, "content": m.content}
-        for m in request.conversation_history[-10:]  # Last 5 exchanges max
-    ]
+    # If session_id provided, load history from DB
+    session = None
+    if request.session_id:
+        session = (
+            db.query(ChatSession)
+            .filter(
+                ChatSession.id == request.session_id,
+                ChatSession.user_id == current_user.id,
+            )
+            .first()
+        )
+        if not session:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+
+        # Load conversation history from DB
+        db_messages = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session.id)
+            .order_by(ChatMessage.created_at.asc())
+            .all()
+        )
+        history = [{"role": m.role, "content": m.content} for m in db_messages[-10:]]
+    else:
+        history = [
+            {"role": m.role, "content": m.content} for m in request.conversation_history[-10:]
+        ]
+
     result = service.ask(
         request.question,
         wallet_id=request.wallet_id,
         conversation_history=history if history else None,
     )
+
+    # Persist messages if session provided
+    if session:
+        # Save user message
+        user_msg = ChatMessage(
+            session_id=session.id,
+            role="user",
+            content=request.question,
+        )
+        db.add(user_msg)
+
+        # Save assistant message
+        assistant_msg = ChatMessage(
+            session_id=session.id,
+            role="assistant",
+            content=result.get("answer", ""),
+            highlights=result.get("highlights"),
+            chart_type=result.get("chart_type"),
+            query_info=result.get("query_info"),
+            data=result.get("data"),
+            error=result.get("error"),
+        )
+        db.add(assistant_msg)
+
+        # Auto-title from first message
+        if session.title == "New Chat":
+            session.title = request.question[:100]
+
+        session.updated_at = dt.utcnow()
+        db.commit()
 
     return ChatResponse(
         answer=result.get("answer", ""),
@@ -286,6 +504,7 @@ def chat(
         query_info=result.get("query_info"),
         data=result.get("data"),
         error=result.get("error"),
+        session_id=session.id if session else None,
     )
 
 

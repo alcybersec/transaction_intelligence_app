@@ -52,6 +52,12 @@ export interface SuggestionActionResponse {
   rule_created: boolean
 }
 
+export interface BulkAcceptResponse {
+  accepted: number
+  failed: number
+  rules_created: number
+}
+
 export interface ChatQueryInfo {
   type: string | null
   explanation: string | null
@@ -64,6 +70,43 @@ export interface ChatResponse {
   query_info: ChatQueryInfo | null
   data: Record<string, unknown> | null
   error: string | null
+  session_id: string | null
+}
+
+// === Chat Sessions ===
+
+export interface ChatSessionSummary {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  message_count: number
+}
+
+export interface ChatMessagePersisted {
+  id: string
+  session_id: string
+  role: 'user' | 'assistant'
+  content: string
+  highlights: string[] | null
+  chart_type: string | null
+  query_info: ChatQueryInfo | null
+  data: Record<string, unknown> | null
+  error: string | null
+  created_at: string
+}
+
+export interface ChatSessionDetail {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  messages: ChatMessagePersisted[]
+}
+
+export interface ChatSessionListResponse {
+  sessions: ChatSessionSummary[]
+  total: number
 }
 
 export interface BatchSuggestResponse {
@@ -182,6 +225,17 @@ export async function rejectSuggestion(
   return res.json()
 }
 
+export async function acceptAllSuggestions(): Promise<BulkAcceptResponse> {
+  const res = await authFetch(`${API_URL}/ai/suggestions/accept-all`, {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Failed to accept all suggestions' }))
+    throw new Error(error.detail || 'Failed to accept all suggestions')
+  }
+  return res.json()
+}
+
 // === Chat ===
 
 export interface ChatHistoryMessage {
@@ -192,7 +246,8 @@ export interface ChatHistoryMessage {
 export async function sendChatMessage(
   question: string,
   walletId?: string,
-  conversationHistory?: ChatHistoryMessage[]
+  conversationHistory?: ChatHistoryMessage[],
+  sessionId?: string
 ): Promise<ChatResponse> {
   const res = await authFetch(`${API_URL}/ai/chat`, {
     method: 'POST',
@@ -201,6 +256,7 @@ export async function sendChatMessage(
       question,
       wallet_id: walletId,
       conversation_history: conversationHistory || [],
+      session_id: sessionId || null,
     }),
   })
   if (!res.ok) {
@@ -208,6 +264,35 @@ export async function sendChatMessage(
     throw new Error(error.detail || 'Failed to send chat message')
   }
   return res.json()
+}
+
+export async function fetchChatSessions(): Promise<ChatSessionListResponse> {
+  const res = await authFetch(`${API_URL}/ai/chat/sessions`)
+  if (!res.ok) throw new Error('Failed to fetch chat sessions')
+  return res.json()
+}
+
+export async function createChatSession(title: string = 'New Chat'): Promise<ChatSessionSummary> {
+  const res = await authFetch(`${API_URL}/ai/chat/sessions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
+  if (!res.ok) throw new Error('Failed to create chat session')
+  return res.json()
+}
+
+export async function fetchChatSession(sessionId: string): Promise<ChatSessionDetail> {
+  const res = await authFetch(`${API_URL}/ai/chat/sessions/${sessionId}`)
+  if (!res.ok) throw new Error('Failed to fetch chat session')
+  return res.json()
+}
+
+export async function deleteChatSession(sessionId: string): Promise<void> {
+  const res = await authFetch(`${API_URL}/ai/chat/sessions/${sessionId}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error('Failed to delete chat session')
 }
 
 // === Parsing ===
