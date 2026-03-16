@@ -144,41 +144,38 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Disable old git hooks on server
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ vars.DEPLOY_SSH_PORT || '22' }}
-          script: |
-            DEPLOY_DIR="${{ vars.DEPLOY_DIR || '~/txn-app' }}"
-            mkdir -p "${DEPLOY_DIR}"
-            # Remove any git hooks that trigger old-style deploys
-            if [ -d "${DEPLOY_DIR}/.git/hooks" ]; then
-              find "${DEPLOY_DIR}/.git/hooks" -type f ! -name '*.sample' -exec rm -f {} +
-            fi
-
-      - name: Copy compose files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ vars.DEPLOY_SSH_PORT || '22' }}
-          source: "docker-compose.yml,docker-compose.selfhosted.yml"
-          target: ${{ vars.DEPLOY_DIR || '~/txn-app' }}
+      - name: Encode compose files
+        run: |
+          echo "COMPOSE_BASE=$(base64 -w0 docker-compose.yml)" >> "$GITHUB_ENV"
+          echo "COMPOSE_SELFHOSTED=$(base64 -w0 docker-compose.selfhosted.yml)" >> "$GITHUB_ENV"
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
+        env:
+          COMPOSE_BASE: ${{ env.COMPOSE_BASE }}
+          COMPOSE_SELFHOSTED: ${{ env.COMPOSE_SELFHOSTED }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ vars.DEPLOY_SSH_PORT || '22' }}
+          envs: COMPOSE_BASE,COMPOSE_SELFHOSTED
           script: |
             set -e
-            cd ${{ vars.DEPLOY_DIR || '~/txn-app' }}
+            DEPLOY_DIR="${{ vars.DEPLOY_DIR || '~/txn-app' }}"
+            mkdir -p "${DEPLOY_DIR}"
+            cd "${DEPLOY_DIR}"
+
+            # Disable any old git-based auto-deploy
+            if [ -d ".git/hooks" ]; then
+              find .git/hooks -type f ! -name '*.sample' -exec rm -f {} +
+            fi
+            # Disable any git core.hooksPath override
+            git config --local --unset core.hooksPath 2>/dev/null || true
+
+            # Write compose files (transferred via base64 to avoid SCP hook triggers)
+            echo "${COMPOSE_BASE}" | base64 -d > docker-compose.yml
+            echo "${COMPOSE_SELFHOSTED}" | base64 -d > docker-compose.selfhosted.yml
 
             export GHCR_OWNER="${{ github.repository_owner }}"
             export IMAGE_TAG="$(echo '${{ github.sha }}' | cut -c1-7)"
