@@ -1,7 +1,7 @@
 """Create app_settings KV table.
 
 Revision ID: 011_app_settings
-Revises: 006_chat_tables
+Revises: 010_2fa_sessions
 Create Date: 2026-06-10 00:00:00.000000
 
 """
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision: str = "011_app_settings"
-down_revision: str | None = "006_chat_tables"
+down_revision: str | None = "010_2fa_sessions"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
