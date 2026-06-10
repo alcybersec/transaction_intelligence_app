@@ -9,16 +9,10 @@ from sqlalchemy.orm import Session
 from app.adapters import get_adapter_registry
 from app.api.deps import get_current_user, get_db
 from app.db.models import Institution, User
+from app.schemas.adapters import AdapterStats
 from app.services.parsing import ParsingService
 
 router = APIRouter()
-
-
-class AdapterStats(BaseModel):
-    """Per-adapter parsing stats returned by GET /adapters/{name}/stats."""
-
-    parsed_count: int = 0
-    last_parsed_at: str | None = None
 
 
 class AdapterInfoResponse(BaseModel):
