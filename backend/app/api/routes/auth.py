@@ -107,7 +107,9 @@ async def login(
             user=UserResponse(
                 id=user.id,
                 username=user.username,
+                email=user.email,
                 display_name=user.display_name,
+                preferences=dict(user.preferences or {}),
                 is_admin=user.is_admin,
                 is_active=user.is_active,
                 created_at=user.created_at,

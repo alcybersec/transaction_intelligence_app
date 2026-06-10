@@ -39,3 +39,15 @@ def test_delete_account(client, auth_headers, test_user, db_session):
     r = client.delete("/auth/me", headers=auth_headers)
     assert r.status_code == 204
     assert db_session.query(User).filter(User.id == test_user.id).first() is None
+
+
+def test_login_response_includes_email_and_preferences(client, db_session, test_user):
+    test_user.email = "alex@example.com"
+    test_user.preferences = {"currency": "AED", "date_format": "iso"}
+    db_session.commit()
+    r = client.post("/auth/login", json={"username": test_user.username, "password": "pw"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    user = body["user"] if "user" in body else body  # accommodate either nested or flat shape
+    assert user["email"] == "alex@example.com"
+    assert user["preferences"]["currency"] == "AED"
