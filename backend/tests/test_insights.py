@@ -1,4 +1,5 @@
 """TDD: GET /analytics/insights."""
+
 from __future__ import annotations
 
 

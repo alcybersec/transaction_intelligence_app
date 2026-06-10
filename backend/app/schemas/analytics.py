@@ -127,6 +127,19 @@ class DashboardAnalyticsResponse(BaseModel):
     currency: str = "AED"
 
 
+# ============== Insights ==============
+
+
+class InsightsResponse(BaseModel):
+    """Smart insights summary for a period."""
+
+    subscriptions_count: int = 0
+    top_merchant_alt: dict | None = None  # {merchant, current_avg, suggested_alt, savings_pct}
+    budget_forecast: dict | None = None  # {category, forecast_overrun_pct}
+    spending_trend: str | None = None  # "up" | "down" | "flat"
+    spending_change_percentage: float = 0.0
+
+
 # ============== Export ==============
 
 
