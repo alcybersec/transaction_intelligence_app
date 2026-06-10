@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 
 class ParsedTransaction(BaseModel):
@@ -141,6 +141,21 @@ class TransactionNotesUpdate(BaseModel):
     """Request to update transaction notes."""
 
     notes: str | None = Field(None, max_length=1000)
+
+
+class TransactionSummary(BaseModel):
+    """Aggregated totals for a filtered set of transactions."""
+
+    total_debit: Decimal = Decimal("0.00")
+    total_credit: Decimal = Decimal("0.00")
+    net: Decimal = Decimal("0.00")
+    debit_count: int = 0
+    credit_count: int = 0
+    avg_debit: Decimal = Decimal("0.00")
+
+    @field_serializer("total_debit", "total_credit", "net", "avg_debit")
+    def _ser_money(self, v: Decimal) -> str:
+        return f"{v:.2f}"
 
 
 class ReviewQueueItem(BaseModel):

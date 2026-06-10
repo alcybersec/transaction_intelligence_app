@@ -131,3 +131,33 @@ export async function updateTransactionCategory(
   if (!res.ok) throw new Error('Failed to update category')
   return res.json()
 }
+
+export interface TransactionsSummary {
+  total_debit: string
+  total_credit: string
+  net: string
+  debit_count: number
+  credit_count: number
+  avg_debit: string
+}
+
+export async function fetchTransactionsSummary(
+  filters: TransactionFilters = {}
+): Promise<TransactionsSummary> {
+  const params = new URLSearchParams()
+
+  if (filters.wallet_id) params.set('wallet_id', filters.wallet_id)
+  if (filters.vendor_id) params.set('vendor_id', filters.vendor_id)
+  if (filters.category_id) params.set('category_id', filters.category_id)
+  if (filters.direction) params.set('direction', filters.direction)
+  if (filters.status) params.set('status', filters.status)
+  if (filters.date_from) params.set('date_from', filters.date_from)
+  if (filters.date_to) params.set('date_to', filters.date_to)
+  if (filters.amount_min !== undefined) params.set('amount_min', String(filters.amount_min))
+  if (filters.amount_max !== undefined) params.set('amount_max', String(filters.amount_max))
+  if (filters.search) params.set('search', filters.search)
+
+  const res = await authFetch(`${API_URL}/transactions/summary?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch transactions summary')
+  return res.json()
+}
