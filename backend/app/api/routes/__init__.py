@@ -9,6 +9,7 @@ from app.api.routes.analytics import router as analytics_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.budgets import router as budgets_router
 from app.api.routes.categories import router as categories_router
+from app.api.routes.goals import router as goals_router
 from app.api.routes.health import router as health_router
 from app.api.routes.ingest import router as ingest_router
 from app.api.routes.internal import router as internal_router
@@ -28,6 +29,7 @@ router.include_router(categories_router, prefix="/categories", tags=["categories
 router.include_router(vendors_router, prefix="/vendors", tags=["vendors"])
 router.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
 router.include_router(budgets_router, prefix="/budgets", tags=["budgets"])
+router.include_router(goals_router, prefix="/goals", tags=["goals"])
 router.include_router(reports_router, prefix="/reports", tags=["reports"])
 router.include_router(ai_router, prefix="/ai", tags=["ai"])
 router.include_router(adapters_router, prefix="/adapters", tags=["adapters"])
