@@ -1,4 +1,5 @@
 """TDD: PATCH /auth/me + DELETE /auth/me."""
+
 from __future__ import annotations
 
 
@@ -23,9 +24,7 @@ def test_patch_email_validates(client, auth_headers):
 
 
 def test_patch_preferences_merges(client, auth_headers):
-    r = client.patch(
-        "/auth/me", headers=auth_headers, json={"preferences": {"currency": "AED"}}
-    )
+    r = client.patch("/auth/me", headers=auth_headers, json={"preferences": {"currency": "AED"}})
     assert r.json()["preferences"]["currency"] == "AED"
     r2 = client.patch(
         "/auth/me", headers=auth_headers, json={"preferences": {"date_format": "iso"}}
