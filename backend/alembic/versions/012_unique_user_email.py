@@ -18,10 +18,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     # Drop the old non-unique index, replace with a partial UNIQUE index.
     op.drop_index("ix_users_email", table_name="users")
-    op.execute(
-        "CREATE UNIQUE INDEX ix_users_email "
-        "ON users (email) WHERE email IS NOT NULL"
-    )
+    op.execute("CREATE UNIQUE INDEX ix_users_email ON users (email) WHERE email IS NOT NULL")
 
 
 def downgrade() -> None:
