@@ -1,4 +1,5 @@
 """Pytest fixtures: a fresh Postgres schema per test + an authenticated TestClient."""
+
 from __future__ import annotations
 
 import os
@@ -13,8 +14,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.api.deps import get_db
 from app.db.base import Base
 from app.db.models.user import User
-from app.services.auth import create_access_token, hash_password
 from app.main import app
+from app.services.auth import create_access_token, hash_password
 
 
 def _build_test_db_url() -> str:

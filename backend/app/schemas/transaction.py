@@ -83,6 +83,7 @@ class TransactionGroupResponse(BaseModel):
     combined_balance_after: Decimal | None
     status: str
     notes: str | None
+    is_recurring: bool = Field(default=False, description="Marked as recurring/subscription")
     evidence_count: int = Field(default=1, description="Number of linked evidence messages")
     created_at: datetime
     updated_at: datetime
@@ -156,6 +157,26 @@ class TransactionSummary(BaseModel):
     @field_serializer("total_debit", "total_credit", "net", "avg_debit")
     def _ser_money(self, v: Decimal) -> str:
         return f"{v:.2f}"
+
+
+class TransactionUpdate(BaseModel):
+    """Partial update for a transaction (category + is_recurring)."""
+
+    category_id: UUID | None = None
+    is_recurring: bool | None = None
+
+
+class BulkRecurringUpdate(BaseModel):
+    """Bulk toggle of is_recurring on a list of transaction ids."""
+
+    ids: list[UUID] = Field(..., min_length=1, max_length=500)
+    is_recurring: bool
+
+
+class BulkUpdateResponse(BaseModel):
+    """Response for a bulk update operation."""
+
+    updated: int
 
 
 class ReviewQueueItem(BaseModel):
