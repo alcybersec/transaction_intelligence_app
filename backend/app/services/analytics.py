@@ -430,6 +430,16 @@ class AnalyticsService:
             or 0
         )
 
+        # Subscriptions count: distinct recurring transactions in the period
+        subs_query = self.db.query(func.count(TransactionGroup.id)).filter(
+            TransactionGroup.is_recurring.is_(True),
+            TransactionGroup.occurred_at >= start_dt,
+            TransactionGroup.occurred_at <= end_dt,
+        )
+        if wallet_id:
+            subs_query = subs_query.filter(TransactionGroup.wallet_id == wallet_id)
+        subscriptions_count = subs_query.scalar() or 0
+
         return DashboardAnalyticsResponse(
             period_start=period_start,
             period_end=period_end,
@@ -443,5 +453,6 @@ class AnalyticsService:
             monthly_comparison=monthly_comparison,
             transaction_count=spending_count + income_count,
             pending_review_count=pending_review,
+            subscriptions_count=subscriptions_count,
             currency="AED",
         )

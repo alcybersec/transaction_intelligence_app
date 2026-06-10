@@ -123,6 +123,7 @@ class DashboardAnalyticsResponse(BaseModel):
     # Transaction counts
     transaction_count: int
     pending_review_count: int = 0
+    subscriptions_count: int = 0
 
     currency: str = "AED"
 
