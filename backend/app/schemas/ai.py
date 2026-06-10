@@ -253,13 +253,6 @@ class BatchSuggestResponse(BaseModel):
 # === AI Settings ===
 
 
-class AISettingsUpdateRequest(BaseModel):
-    """Request to update AI settings (for future use)."""
-
-    ollama_base_url: str | None = None
-    ollama_model: str | None = None
-
-
 class AISettingsUpdate(BaseModel):
     """Partial update for persisted AI settings (PATCH /ai/settings)."""
 
