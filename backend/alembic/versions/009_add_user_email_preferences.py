@@ -1,7 +1,7 @@
 """Add email, display_name (resize), preferences to users.
 
 Revision ID: 009_user_email_prefs
-Revises: 006_chat_tables
+Revises: 008_savings_goals
 Create Date: 2026-06-10 00:00:00.000000
 """
 
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 revision: str = "009_user_email_prefs"
-down_revision: str | None = "006_chat_tables"
+down_revision: str | None = "008_savings_goals"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
