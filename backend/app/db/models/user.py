@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.db.base import Base
 
@@ -23,7 +23,9 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
 
     # Profile
+    email = Column(String(255), nullable=True, index=True)
     display_name = Column(String(255), nullable=True)
+    preferences = Column(JSONB, nullable=False, default=dict, server_default="{}")
 
     # Status
     is_active = Column(Boolean, nullable=False, default=True)

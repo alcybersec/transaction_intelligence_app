@@ -1,9 +1,10 @@
 """Pydantic schemas for authentication."""
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
@@ -41,13 +42,23 @@ class UserResponse(BaseModel):
 
     id: UUID
     username: str
-    display_name: str | None
+    email: str | None = None
+    display_name: str | None = None
+    preferences: dict[str, Any] = Field(default_factory=dict)
     is_admin: bool
     is_active: bool
     created_at: datetime
     last_login_at: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class UserMeUpdate(BaseModel):
+    """Profile update payload for PATCH /auth/me."""
+
+    email: EmailStr | None = None
+    display_name: str | None = Field(None, max_length=120)
+    preferences: dict[str, Any] | None = None
 
 
 class UserCreate(BaseModel):
