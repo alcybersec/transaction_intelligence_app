@@ -23,6 +23,8 @@ from app.db.models import (
 )
 from app.db.session import get_db
 from app.schemas.transaction import (
+    BulkRecurringUpdate,
+    BulkUpdateResponse,
     ManualParseRequest,
     ManualParseResponse,
     ReviewQueueItem,
@@ -33,6 +35,9 @@ from app.schemas.transaction import (
     TransactionGroupResponse,
     TransactionNotesUpdate,
     TransactionSummary,
+    TransactionUpdate,
+    BulkRecurringUpdate,
+    BulkUpdateResponse,
 )
 from app.services.merge import MergeEngine
 from app.services.parsing import ParsingService
@@ -64,6 +69,7 @@ def _build_transaction_response(
         combined_balance_after=txn.combined_balance_after,
         status=txn.status.value,
         notes=txn.notes,
+        is_recurring=bool(txn.is_recurring),
         evidence_count=evidence_count or len(txn.evidence),
         created_at=txn.created_at,
         updated_at=txn.updated_at,
@@ -84,6 +90,7 @@ async def list_transactions(
     amount_min: float | None = Query(None),
     amount_max: float | None = Query(None),
     search: str | None = Query(None),
+    recurring: bool | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
 ) -> TransactionGroupListResponse:
@@ -139,6 +146,9 @@ async def list_transactions(
 
     if amount_max is not None:
         query = query.filter(TransactionGroup.amount <= amount_max)
+
+    if recurring is not None:
+        query = query.filter(TransactionGroup.is_recurring == recurring)
 
     if search:
         search_filter = f"%{search}%"
@@ -253,6 +263,25 @@ async def transactions_summary(
     )
 
 
+@router.patch("/bulk", response_model=BulkUpdateResponse)
+async def bulk_update_recurring(
+    payload: BulkRecurringUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> BulkUpdateResponse:
+    """Bulk-toggle is_recurring on a list of transaction ids."""
+    updated = (
+        db.query(TransactionGroup)
+        .filter(TransactionGroup.id.in_(payload.ids))
+        .update(
+            {TransactionGroup.is_recurring: payload.is_recurring},
+            synchronize_session=False,
+        )
+    )
+    db.commit()
+    return BulkUpdateResponse(updated=updated)
+
+
 @router.get("/{transaction_id}", response_model=TransactionDetailResponse)
 async def get_transaction(
     transaction_id: UUID,
@@ -327,6 +356,34 @@ async def get_transaction(
         updated_at=txn.updated_at,
         evidence=evidence_responses,
     )
+
+
+@router.patch("/{transaction_id}", response_model=TransactionGroupResponse)
+async def update_transaction(
+    transaction_id: UUID,
+    payload: TransactionUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TransactionGroupResponse:
+    """Update mutable fields on a transaction (category, recurring flag)."""
+    txn = (
+        db.query(TransactionGroup)
+        .options(joinedload(TransactionGroup.vendor), joinedload(TransactionGroup.category))
+        .filter(TransactionGroup.id == transaction_id)
+        .first()
+    )
+    if not txn:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    if payload.category_id is not None:
+        txn.category_id = payload.category_id
+    if payload.is_recurring is not None:
+        txn.is_recurring = payload.is_recurring
+    txn.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(txn)
+
+    return _build_transaction_response(txn)
 
 
 @router.patch("/{transaction_id}/notes", response_model=TransactionGroupResponse)
