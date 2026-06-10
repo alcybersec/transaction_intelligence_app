@@ -1,5 +1,6 @@
 """Database models package."""
 
+from app.db.models.app_setting import AppSetting
 from app.db.models.budget import Budget
 from app.db.models.chat import ChatMessage, ChatSession
 from app.db.models.institution import Institution, Instrument, InstrumentType
@@ -62,4 +63,6 @@ __all__ = [
     # Chat
     "ChatSession",
     "ChatMessage",
+    # App settings
+    "AppSetting",
 ]

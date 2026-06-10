@@ -170,7 +170,7 @@ export function AISettings() {
             )}
 
             {/* Configuration Help */}
-            {!settings?.ollama_configured && (
+            {!status?.configured && (
               <div className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
                 <p className="font-medium mb-1">Setup Instructions</p>
                 <ol className="list-decimal list-inside space-y-1">

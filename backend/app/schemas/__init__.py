@@ -2,7 +2,6 @@
 
 from app.schemas.ai import (
     AcceptSuggestionRequest,
-    AISettingsResponse,
     BatchSuggestRequest,
     BatchSuggestResponse,
     CategorySuggestionListResponse,
@@ -108,7 +107,6 @@ __all__ = [
     "ReparseResponse",
     "BatchSuggestRequest",
     "BatchSuggestResponse",
-    "AISettingsResponse",
     # Auth
     "LoginRequest",
     "TokenResponse",

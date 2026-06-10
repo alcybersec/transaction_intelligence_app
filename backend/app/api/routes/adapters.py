@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.adapters import get_adapter_registry
 from app.api.deps import get_current_user, get_db
 from app.db.models import Institution, User
+from app.schemas.adapters import AdapterStats
 from app.services.parsing import ParsingService
 
 router = APIRouter()
@@ -339,3 +340,29 @@ def list_adapter_parsers(
         )
         for pm in parser_metadata
     ]
+
+
+@router.get("/{institution_name}/stats", response_model=AdapterStats)
+def get_adapter_stats(
+    institution_name: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AdapterStats:
+    """
+    Return parsing stats for an adapter.
+
+    NOTE: the `messages` table does not currently track which adapter
+    parsed it, so `parsed_count` is reported as 0 and `last_parsed_at` as
+    null for any registered adapter. This is shape-only until a per-message
+    adapter tally column lands. Unknown adapters still return 404.
+    """
+    registry = get_adapter_registry()
+    adapter = registry.get_adapter(institution_name)
+    if not adapter:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Adapter '{institution_name}' not found",
+        )
+
+    # No per-adapter column on Message yet — see docstring.
+    return AdapterStats(parsed_count=0, last_parsed_at=None)
