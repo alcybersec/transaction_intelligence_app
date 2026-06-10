@@ -80,3 +80,4 @@ CLAUDE.md
 # Core dumps
 core.*
 *.core
+.handoff/
