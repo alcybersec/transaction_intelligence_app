@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from app.db.models.transaction import (
@@ -22,7 +22,7 @@ def _make_txn(
     direction=TransactionDirection.DEBIT,
     occurred_at=None,
 ):
-    now = occurred_at or datetime.now(timezone.utc)
+    now = occurred_at or datetime.now(UTC)
     t = TransactionGroup(
         id=uuid.uuid4(),
         direction=direction,
@@ -88,7 +88,7 @@ def test_list_filter_recurring_false(client, auth_headers, db_session, test_user
 
 
 def test_dashboard_returns_subscriptions_count(client, auth_headers, db_session, test_user):
-    occurred = datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+    occurred = datetime(2026, 6, 15, 12, 0, 0, tzinfo=UTC)
     _make_txn(db_session, test_user.id, recurring=True, occurred_at=occurred)
     _make_txn(db_session, test_user.id, recurring=True, occurred_at=occurred)
     _make_txn(db_session, test_user.id, recurring=False, occurred_at=occurred)
