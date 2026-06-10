@@ -11,10 +11,12 @@ from app.db.session import get_db
 from app.schemas.analytics import (
     CategoryBreakdownResponse,
     DashboardAnalyticsResponse,
+    InsightsResponse,
     SpendingTimeSeriesResponse,
     TopVendorsResponse,
 )
 from app.services.analytics import AnalyticsService
+from app.services.insights import compute_insights
 
 router = APIRouter()
 
@@ -125,3 +127,19 @@ async def get_top_vendors(
         limit=limit,
         direction=txn_direction,
     )
+
+
+@router.get("/insights", response_model=InsightsResponse)
+def get_insights(
+    period_start: date = Query(..., description="Start date"),
+    period_end: date = Query(..., description="End date"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> InsightsResponse:
+    """
+    Get smart insights for a period.
+
+    Returns subscriptions count, spending trend, and placeholder slots for
+    future heuristics (top_merchant_alt, budget_forecast).
+    """
+    return InsightsResponse(**compute_insights(db, period_start, period_end))
