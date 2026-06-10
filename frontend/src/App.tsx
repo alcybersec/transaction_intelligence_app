@@ -12,7 +12,16 @@ import { MobileTabBar } from './components/shell/MobileTabBar'
 import { AccountDropdown } from './components/shell/AccountDropdown'
 import { CommandPalette } from './components/shell/CommandPalette'
 
-import { ScreenComingSoon } from './components/screens/ScreenComingSoon'
+import { Login } from './components/screens/Login'
+import { Dashboard } from './components/screens/Dashboard'
+import { Transactions } from './components/screens/Transactions'
+import { TransactionDetail } from './components/screens/TransactionDetail'
+import { Budgets } from './components/screens/Budgets'
+import { Reports } from './components/screens/Reports'
+import { Chat } from './components/screens/Chat'
+import { Vendors } from './components/screens/Vendors'
+import { Categories } from './components/screens/Categories'
+import { Settings } from './components/screens/Settings'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,15 +62,15 @@ function AuthedShell() {
       />
       <main key={location.pathname}>
         <Routes>
-          <Route path="/" element={<ScreenComingSoon name="Dashboard" />} />
-          <Route path="/transactions" element={<ScreenComingSoon name="Transactions" />} />
-          <Route path="/transactions/:id" element={<ScreenComingSoon name="Transaction Detail" />} />
-          <Route path="/budgets" element={<ScreenComingSoon name="Budgets & Goals" />} />
-          <Route path="/reports" element={<ScreenComingSoon name="Reports" />} />
-          <Route path="/chat" element={<ScreenComingSoon name="AI Chat" />} />
-          <Route path="/vendors" element={<ScreenComingSoon name="Vendors" />} />
-          <Route path="/categories" element={<ScreenComingSoon name="Categories" />} />
-          <Route path="/settings/*" element={<ScreenComingSoon name="Settings" />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/transactions/:id" element={<TransactionDetail />} />
+          <Route path="/budgets" element={<Budgets />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/vendors" element={<Vendors />} />
+          <Route path="/categories" element={<Categories />} />
+          <Route path="/settings/*" element={<Settings />} />
           {import.meta.env.DEV && (
             <Route path="/_kitchen-sink" element={<KitchenSinkLazy />} />
           )}
@@ -81,7 +90,7 @@ function Gate() {
       <div className="min-h-screen flex items-center justify-center text-text-2">Loading…</div>
     )
   }
-  if (!user) return <ScreenComingSoon name="Login" /> // Phase 3a swaps this for real LoginPage
+  if (!user) return <Login />
   return <AuthedShell />
 }
 
