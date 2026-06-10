@@ -27,4 +27,9 @@
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum' 1;
   }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--text);
+  }
 }
