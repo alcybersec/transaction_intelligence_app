@@ -36,8 +36,6 @@ from app.schemas.transaction import (
     TransactionNotesUpdate,
     TransactionSummary,
     TransactionUpdate,
-    BulkRecurringUpdate,
-    BulkUpdateResponse,
 )
 from app.services.merge import MergeEngine
 from app.services.parsing import ParsingService
