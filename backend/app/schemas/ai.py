@@ -261,7 +261,7 @@ class AISettingsUpdate(BaseModel):
     features: dict[str, Any] | None = None
 
 
-class AISettingsFull(BaseModel):
+class AISettings(BaseModel):
     """Full persisted AI settings view (returned by GET and PATCH)."""
 
     ollama_base_url: str | None = None

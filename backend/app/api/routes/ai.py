@@ -19,7 +19,7 @@ from app.db.models import (
 )
 from app.schemas.ai import (
     AcceptSuggestionRequest,
-    AISettingsFull,
+    AISettings,
     AISettingsUpdate,
     BatchSuggestRequest,
     BatchSuggestResponse,
@@ -75,7 +75,7 @@ def get_ollama_status(
     )
 
 
-@router.get("/settings", response_model=AISettingsFull)
+@router.get("/settings", response_model=AISettings)
 def get_ai_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -86,10 +86,10 @@ def get_ai_settings(
     status is exposed separately by `GET /ai/status`.
     """
     stored = get_setting(db, AI_SETTINGS_KEY, default={}) or {}
-    return AISettingsFull(**stored)
+    return AISettings(**stored)
 
 
-@router.patch("/settings", response_model=AISettingsFull)
+@router.patch("/settings", response_model=AISettings)
 def update_ai_settings(
     payload: AISettingsUpdate,
     db: Session = Depends(get_db),
@@ -106,7 +106,7 @@ def update_ai_settings(
         merged.update(payload.features)
         current["features"] = merged
     put_setting(db, AI_SETTINGS_KEY, current)
-    return AISettingsFull(**current)
+    return AISettings(**current)
 
 
 # === Category Suggestions ===
