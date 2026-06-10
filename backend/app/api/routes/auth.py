@@ -16,6 +16,7 @@ from app.schemas.auth import (
     RefreshResponse,
     TokenResponse,
     UserCreate,
+    UserMeUpdate,
     UserResponse,
 )
 from app.services.auth import (
@@ -140,12 +141,57 @@ async def get_current_user_info(
     return UserResponse(
         id=current_user.id,
         username=current_user.username,
+        email=current_user.email,
         display_name=current_user.display_name,
+        preferences=dict(current_user.preferences or {}),
         is_admin=current_user.is_admin,
         is_active=current_user.is_active,
         created_at=current_user.created_at,
         last_login_at=current_user.last_login_at,
     )
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_current_user(
+    payload: UserMeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    """Update the current user's profile.
+
+    `preferences` is merged into the existing preferences dict (not replaced).
+    """
+    if payload.email is not None:
+        current_user.email = str(payload.email)
+    if payload.display_name is not None:
+        current_user.display_name = payload.display_name
+    if payload.preferences is not None:
+        merged = dict(current_user.preferences or {})
+        merged.update(payload.preferences)
+        current_user.preferences = merged
+    db.commit()
+    db.refresh(current_user)
+    return UserResponse(
+        id=current_user.id,
+        username=current_user.username,
+        email=current_user.email,
+        display_name=current_user.display_name,
+        preferences=dict(current_user.preferences or {}),
+        is_admin=current_user.is_admin,
+        is_active=current_user.is_active,
+        created_at=current_user.created_at,
+        last_login_at=current_user.last_login_at,
+    )
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_current_user(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete the current user's account."""
+    db.delete(current_user)
+    db.commit()
 
 
 @router.post("/change-password")
