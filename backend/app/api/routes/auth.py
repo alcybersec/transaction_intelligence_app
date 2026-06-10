@@ -363,9 +363,7 @@ async def verify_2fa(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="2FA not enabled",
         )
-    if not pyotp.TOTP(current_user.two_factor_secret).verify(
-        payload.code, valid_window=1
-    ):
+    if not pyotp.TOTP(current_user.two_factor_secret).verify(payload.code, valid_window=1):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid code",

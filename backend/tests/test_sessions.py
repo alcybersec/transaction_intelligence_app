@@ -12,9 +12,7 @@ def test_login_creates_session(client, db_session, test_user):
     # Session row should exist
     from app.db.models.user_session import UserSession
 
-    sessions = (
-        db_session.query(UserSession).filter(UserSession.user_id == test_user.id).all()
-    )
+    sessions = db_session.query(UserSession).filter(UserSession.user_id == test_user.id).all()
     assert len(sessions) == 1
 
 

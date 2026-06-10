@@ -26,12 +26,8 @@ class UserSession(Base):
     refresh_token_hash = Column(String(255), nullable=False)
     user_agent = Column(String(255), nullable=True)
     ip_address = Column(String(45), nullable=True)
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow
-    )
-    last_seen_at = Column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow
-    )
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    last_seen_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
     def __repr__(self) -> str:
         return f"<UserSession(id={self.id}, user_id={self.user_id})>"
