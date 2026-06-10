@@ -27,6 +27,7 @@ export interface Transaction {
   combined_balance_after: string | null
   status: 'posted' | 'reversed' | 'refunded' | 'unknown'
   notes: string | null
+  is_recurring: boolean
   evidence_count: number
   created_at: string
   updated_at: string
@@ -65,6 +66,7 @@ export interface TransactionFilters {
   amount_min?: number
   amount_max?: number
   search?: string
+  recurring?: boolean
   page?: number
   page_size?: number
 }
@@ -86,6 +88,7 @@ export async function fetchTransactions(
   if (filters.amount_min !== undefined) params.set('amount_min', String(filters.amount_min))
   if (filters.amount_max !== undefined) params.set('amount_max', String(filters.amount_max))
   if (filters.search) params.set('search', filters.search)
+  if (filters.recurring !== undefined) params.set('recurring', String(filters.recurring))
   if (filters.page) params.set('page', String(filters.page))
   if (filters.page_size) params.set('page_size', String(filters.page_size))
 
@@ -159,5 +162,31 @@ export async function fetchTransactionsSummary(
 
   const res = await authFetch(`${API_URL}/transactions/summary?${params}`)
   if (!res.ok) throw new Error('Failed to fetch transactions summary')
+  return res.json()
+}
+
+export async function updateTransactionRecurring(
+  id: string,
+  isRecurring: boolean
+): Promise<Transaction> {
+  const res = await authFetch(`${API_URL}/transactions/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_recurring: isRecurring }),
+  })
+  if (!res.ok) throw new Error(`updateTransactionRecurring failed: ${res.status}`)
+  return res.json()
+}
+
+export async function bulkUpdateRecurring(
+  ids: string[],
+  isRecurring: boolean
+): Promise<{ updated: number }> {
+  const res = await authFetch(`${API_URL}/transactions/bulk`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, is_recurring: isRecurring }),
+  })
+  if (!res.ok) throw new Error(`bulkUpdateRecurring failed: ${res.status}`)
   return res.json()
 }
