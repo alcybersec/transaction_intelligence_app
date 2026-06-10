@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -59,6 +59,13 @@ class UserMeUpdate(BaseModel):
     email: EmailStr | None = None
     display_name: str | None = Field(None, max_length=120)
     preferences: dict[str, Any] | None = None
+
+    @field_validator("email")
+    @classmethod
+    def _normalize_email(cls, v: EmailStr | None) -> str | None:
+        if v is None:
+            return None
+        return str(v).strip().lower()
 
 
 class UserCreate(BaseModel):
