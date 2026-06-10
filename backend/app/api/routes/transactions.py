@@ -1,6 +1,7 @@
 """Transaction API endpoints."""
 
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -31,6 +32,7 @@ from app.schemas.transaction import (
     TransactionGroupListResponse,
     TransactionGroupResponse,
     TransactionNotesUpdate,
+    TransactionSummary,
 )
 from app.services.merge import MergeEngine
 from app.services.parsing import ParsingService
@@ -164,6 +166,78 @@ async def list_transactions(
         page=page,
         page_size=page_size,
         has_more=(offset + len(transactions)) < total,
+    )
+
+
+@router.get("/summary", response_model=TransactionSummary)
+async def transactions_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    wallet_id: UUID | None = Query(None),
+    category_id: UUID | None = Query(None),
+    direction: str | None = Query(None),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    amount_min: Decimal | None = Query(None),
+    amount_max: Decimal | None = Query(None),
+    search: str | None = Query(None),
+) -> TransactionSummary:
+    """
+    Aggregate totals for transactions matching the given filters.
+
+    Mirrors the filter set on the list endpoint (minus pagination/status).
+    Returns total debit/credit/net amounts, counts, and average debit.
+    """
+    query = db.query(TransactionGroup)
+
+    if wallet_id:
+        query = query.filter(TransactionGroup.wallet_id == wallet_id)
+
+    if category_id:
+        query = query.filter(TransactionGroup.category_id == category_id)
+
+    if direction:
+        try:
+            dir_enum = TransactionDirection(direction)
+            query = query.filter(TransactionGroup.direction == dir_enum)
+        except ValueError:
+            pass
+
+    if date_from:
+        query = query.filter(TransactionGroup.occurred_at >= date_from)
+
+    if date_to:
+        query = query.filter(TransactionGroup.occurred_at <= date_to)
+
+    if amount_min is not None:
+        query = query.filter(TransactionGroup.amount >= amount_min)
+
+    if amount_max is not None:
+        query = query.filter(TransactionGroup.amount <= amount_max)
+
+    if search:
+        search_filter = f"%{search}%"
+        query = query.outerjoin(Vendor).filter(
+            or_(
+                TransactionGroup.notes.ilike(search_filter),
+                TransactionGroup.vendor_raw.ilike(search_filter),
+                Vendor.canonical_name.ilike(search_filter),
+            )
+        )
+
+    rows = query.all()
+    debits = [r.amount for r in rows if r.direction == TransactionDirection.DEBIT]
+    credits = [r.amount for r in rows if r.direction == TransactionDirection.CREDIT]
+    total_debit = sum(debits, Decimal("0.00"))
+    total_credit = sum(credits, Decimal("0.00"))
+    avg_debit = (total_debit / len(debits)) if debits else Decimal("0.00")
+    return TransactionSummary(
+        total_debit=total_debit,
+        total_credit=total_credit,
+        net=total_credit - total_debit,
+        debit_count=len(debits),
+        credit_count=len(credits),
+        avg_debit=avg_debit,
     )
 
 
