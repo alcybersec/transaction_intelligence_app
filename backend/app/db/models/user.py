@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.db.base import Base
@@ -17,13 +17,21 @@ class User(Base):
     """
 
     __tablename__ = "users"
+    __table_args__ = (
+        Index(
+            "ix_users_email",
+            "email",
+            unique=True,
+            postgresql_where="email IS NOT NULL",
+        ),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(100), nullable=False, unique=True, index=True)
     password_hash = Column(String(255), nullable=False)
 
     # Profile
-    email = Column(String(255), nullable=True, index=True)
+    email = Column(String(255), nullable=True)
     display_name = Column(String(255), nullable=True)
     preferences = Column(JSONB, nullable=False, default=dict, server_default="{}")
 

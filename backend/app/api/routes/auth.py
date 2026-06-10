@@ -7,6 +7,7 @@ from uuid import UUID
 
 import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_admin_user, get_current_user
@@ -191,7 +192,14 @@ async def update_current_user(
         merged = dict(current_user.preferences or {})
         merged.update(payload.preferences)
         current_user.preferences = merged
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already in use",
+        ) from None
     db.refresh(current_user)
     return UserResponse(
         id=current_user.id,
