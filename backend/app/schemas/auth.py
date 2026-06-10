@@ -77,5 +77,34 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)
 
 
+class TwoFactorEnableResponse(BaseModel):
+    """Response when enabling 2FA: contains the new TOTP secret + otpauth URL."""
+
+    secret: str
+    otpauth_url: str
+
+
+class TwoFactorVerifyRequest(BaseModel):
+    """Request to verify a TOTP code."""
+
+    code: str = Field(..., min_length=1, max_length=12)
+
+
+class TwoFactorVerifyResponse(BaseModel):
+    """Result of a TOTP verification."""
+
+    verified: bool
+
+
+class SessionResponse(BaseModel):
+    """One persisted user session row."""
+
+    id: str
+    user_agent: str | None
+    ip_address: str | None
+    created_at: str
+    last_seen_at: str
+
+
 # Update forward reference
 TokenResponse.model_rebuild()

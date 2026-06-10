@@ -35,6 +35,10 @@ class User(Base):
     failed_login_attempts = Column(Integer, nullable=False, default=0)
     locked_until = Column(DateTime(timezone=True), nullable=True)
 
+    # Two-factor authentication
+    two_factor_secret = Column(String(64), nullable=True)
+    two_factor_verified = Column(Boolean, nullable=False, default=False)
+
     # Timestamps
     created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at = Column(
