@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 
-type Tone = 'neutral' | 'accent' | 'debit' | 'warn'
+type Tone = 'neutral' | 'accent' | 'debit' | 'credit' | 'warn'
 interface ToastMessage {
   id: number
   text: string
