@@ -1,11 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider } from './contexts/AuthContext'
 import App from './App'
 import './index.css'
-
-const queryClient = new QueryClient()
 
 // Register service worker for PWA support
 if ('serviceWorker' in navigator) {
@@ -28,10 +24,6 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </QueryClientProvider>
+    <App />
   </StrictMode>
 )

@@ -1,345 +1,104 @@
-import { useState, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import {
-  Settings,
-  LayoutDashboard,
-  Store,
-  Tag,
-  LogOut,
-  Receipt,
-  PiggyBank,
-  FileText,
-  MessageSquare,
-} from 'lucide-react'
-import { useAuth } from './contexts/AuthContext'
-import { LoginPage } from './components/LoginPage'
-import { WalletSettings } from './components/WalletSettings'
-import { TransactionList } from './components/TransactionList'
-import type { TransactionFilters } from './api/transactions'
-import { TransactionDetail } from './components/TransactionDetail'
-import { CategoriesManager } from './components/CategoriesManager'
-import { VendorList } from './components/VendorList'
-import { Dashboard } from './components/Dashboard'
-import { BudgetsManager } from './components/BudgetsManager'
-import { Reports } from './components/Reports'
-import { Chat } from './components/Chat'
-import { AISettings } from './components/AISettings'
-import { AdaptersSettings } from './components/AdaptersSettings'
+import { lazy, Suspense, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ThemeProvider } from './components/shell/ThemeProvider'
+import { ToastProvider } from './components/primitives/ToastContext'
+import { CommandPaletteProvider, useCommandPalette } from './components/shell/CommandPaletteContext'
 
-interface HealthResponse {
-  status: string
-  service: string
-  version: string
+import { TopBar } from './components/shell/TopBar'
+import { MobileTabBar } from './components/shell/MobileTabBar'
+import { AccountDropdown } from './components/shell/AccountDropdown'
+import { CommandPalette } from './components/shell/CommandPalette'
+
+import { ScreenComingSoon } from './components/screens/ScreenComingSoon'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
+// Lazy import so the dev page is dropped from production bundles
+const KitchenSink = lazy(() =>
+  import('./components/_kitchen-sink/KitchenSink').then((m) => ({ default: m.KitchenSink })),
+)
+
+function KitchenSinkLazy() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-text-2">Loading…</div>}>
+      <KitchenSink />
+    </Suspense>
+  )
 }
 
-type Tab = 'dashboard' | 'transactions' | 'vendors' | 'categories' | 'budgets' | 'reports' | 'chat' | 'settings'
-
-function AuthenticatedApp() {
+function AuthedShell() {
   const { user, logout } = useAuth()
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
-  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
-  const [transactionFilters, setTransactionFilters] = useState<TransactionFilters>({
-    page: 1,
-    page_size: 20,
-  })
-  const handleTransactionFiltersChange = useCallback((f: TransactionFilters) => {
-    setTransactionFilters(f)
-  }, [])
-
-  const {
-    data: health,
-    isLoading: healthLoading,
-    error: healthError,
-  } = useQuery<HealthResponse>({
-    queryKey: ['health'],
-    queryFn: async () => {
-      const res = await fetch(`${API_URL}/health`)
-      if (!res.ok) throw new Error('API not reachable')
-      return res.json()
-    },
-    refetchInterval: 30000,
-  })
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette()
+  const location = useLocation()
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-foreground">
-              Transaction Intelligence
-            </h1>
-            <div className="flex items-center gap-4">
-              {healthLoading && (
-                <span className="text-sm text-muted-foreground">Checking API...</span>
-              )}
-              {healthError && (
-                <span className="flex items-center gap-1 text-sm text-destructive">
-                  <span className="h-2 w-2 rounded-full bg-destructive"></span>
-                  API Offline
-                </span>
-              )}
-              {health && (
-                <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                  API: {health.status}
-                </span>
-              )}
-              <div className="flex items-center gap-2 pl-4 border-l border-border">
-                <span className="text-sm text-muted-foreground">
-                  {user?.display_name || user?.username}
-                </span>
-                <button
-                  onClick={logout}
-                  className="p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
-                  title="Logout"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation Tabs */}
-          <nav className="flex gap-1 mt-4 -mb-px overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'dashboard'
-                  ? 'border-primary text-primary bg-muted/50'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
-              }`}
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('transactions')
-                setSelectedTransactionId(null)
-              }}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'transactions'
-                  ? 'border-primary text-primary bg-muted/50'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
-              }`}
-            >
-              <Receipt className="h-4 w-4" />
-              Transactions
-            </button>
-            <button
-              onClick={() => setActiveTab('budgets')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'budgets'
-                  ? 'border-primary text-primary bg-muted/50'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
-              }`}
-            >
-              <PiggyBank className="h-4 w-4" />
-              Budgets
-            </button>
-            <button
-              onClick={() => setActiveTab('reports')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'reports'
-                  ? 'border-primary text-primary bg-muted/50'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
-              }`}
-            >
-              <FileText className="h-4 w-4" />
-              Reports
-            </button>
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'chat'
-                  ? 'border-primary text-primary bg-muted/50'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
-              }`}
-            >
-              <MessageSquare className="h-4 w-4" />
-              AI Chat
-            </button>
-            <button
-              onClick={() => setActiveTab('vendors')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'vendors'
-                  ? 'border-primary text-primary bg-muted/50'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
-              }`}
-            >
-              <Store className="h-4 w-4" />
-              Vendors
-            </button>
-            <button
-              onClick={() => setActiveTab('categories')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'categories'
-                  ? 'border-primary text-primary bg-muted/50'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
-              }`}
-            >
-              <Tag className="h-4 w-4" />
-              Categories
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === 'settings'
-                  ? 'border-primary text-primary bg-muted/50'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
-              }`}
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </button>
-          </nav>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
-        {activeTab === 'dashboard' && (
-          <div className="max-w-5xl">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold">Dashboard</h2>
-              <p className="text-muted-foreground">
-                Overview of your spending, budgets, and financial trends.
-              </p>
-            </div>
-            <Dashboard />
-          </div>
-        )}
-
-        {activeTab === 'transactions' && (
-          <div className="max-w-4xl">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold">Transactions</h2>
-              <p className="text-muted-foreground">
-                View and manage your transactions from SMS and email sources.
-              </p>
-            </div>
-            {selectedTransactionId ? (
-              <TransactionDetail
-                transactionId={selectedTransactionId}
-                onBack={() => setSelectedTransactionId(null)}
-              />
-            ) : (
-              <TransactionList
-                onSelectTransaction={(id) => setSelectedTransactionId(id)}
-                filters={transactionFilters}
-                onFiltersChange={handleTransactionFiltersChange}
-              />
-            )}
-          </div>
-        )}
-
-        {activeTab === 'budgets' && (
-          <div className="max-w-4xl">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold">Budgets</h2>
-              <p className="text-muted-foreground">
-                Set monthly spending limits for categories and track your progress.
-              </p>
-            </div>
-            <BudgetsManager />
-          </div>
-        )}
-
-        {activeTab === 'reports' && (
-          <div className="max-w-4xl">
-            <Reports />
-          </div>
-        )}
-
-        {activeTab === 'chat' && (
-          <div className="max-w-4xl">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold">AI Assistant</h2>
-              <p className="text-muted-foreground">
-                Ask questions about your spending patterns and get AI-powered insights.
-              </p>
-            </div>
-            <Chat />
-          </div>
-        )}
-
-        {activeTab === 'vendors' && (
-          <div className="max-w-3xl">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold">Vendors</h2>
-              <p className="text-muted-foreground">
-                View merchants and assign categories for automatic categorization.
-              </p>
-            </div>
-            <VendorList />
-          </div>
-        )}
-
-        {activeTab === 'categories' && (
-          <div className="max-w-2xl">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold">Categories</h2>
-              <p className="text-muted-foreground">
-                Manage transaction categories for organizing your spending.
-              </p>
-            </div>
-            <CategoriesManager />
-          </div>
-        )}
-
-        {activeTab === 'settings' && (
-          <div className="max-w-3xl space-y-8">
-            <div>
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold">Wallet Settings</h2>
-                <p className="text-muted-foreground">
-                  Configure your bank cards and accounts, then group them into wallets for combined balance tracking.
-                </p>
-              </div>
-              <WalletSettings />
-            </div>
-            <div>
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold">Bank Adapters</h2>
-                <p className="text-muted-foreground">
-                  View and configure bank adapters that parse your transaction messages.
-                </p>
-              </div>
-              <AdaptersSettings />
-            </div>
-            <div>
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold">AI Settings</h2>
-                <p className="text-muted-foreground">
-                  Configure AI-powered features including parsing, categorization, and chat.
-                </p>
-              </div>
-              <AISettings />
-            </div>
-          </div>
-        )}
+    <div className="min-h-screen pb-16 md:pb-0">
+      <TopBar user={user} onAvatarClick={() => setDropdownOpen((v) => !v)} />
+      <AccountDropdown
+        user={user}
+        open={dropdownOpen}
+        onClose={() => setDropdownOpen(false)}
+        onLogout={logout}
+      />
+      <main key={location.pathname}>
+        <Routes>
+          <Route path="/" element={<ScreenComingSoon name="Dashboard" />} />
+          <Route path="/transactions" element={<ScreenComingSoon name="Transactions" />} />
+          <Route path="/transactions/:id" element={<ScreenComingSoon name="Transaction Detail" />} />
+          <Route path="/budgets" element={<ScreenComingSoon name="Budgets & Goals" />} />
+          <Route path="/reports" element={<ScreenComingSoon name="Reports" />} />
+          <Route path="/chat" element={<ScreenComingSoon name="AI Chat" />} />
+          <Route path="/vendors" element={<ScreenComingSoon name="Vendors" />} />
+          <Route path="/categories" element={<ScreenComingSoon name="Categories" />} />
+          <Route path="/settings/*" element={<ScreenComingSoon name="Settings" />} />
+          {import.meta.env.DEV && (
+            <Route path="/_kitchen-sink" element={<KitchenSinkLazy />} />
+          )}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
+      <MobileTabBar />
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   )
 }
 
-function App() {
-  const { isAuthenticated, isLoading } = useAuth()
-
+function Gate() {
+  const { user, isLoading } = useAuth()
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
+      <div className="min-h-screen flex items-center justify-center text-text-2">Loading…</div>
     )
   }
-
-  if (!isAuthenticated) {
-    return <LoginPage />
-  }
-
-  return <AuthenticatedApp />
+  if (!user) return <ScreenComingSoon name="Login" /> // Phase 3a swaps this for real LoginPage
+  return <AuthedShell />
 }
 
-export default App
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <CommandPaletteProvider>
+              <BrowserRouter>
+                <Gate />
+              </BrowserRouter>
+            </CommandPaletteProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  )
+}

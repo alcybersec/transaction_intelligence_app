@@ -1,10 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider } from './contexts/AuthContext'
 import App from './App'
 
-// Mock the auth API to prevent real API calls
+// Mock the auth API to prevent real API calls and force an unauthenticated state.
 vi.mock('./api/auth', () => ({
   getStoredTokens: () => ({ accessToken: null, refreshToken: null }),
   getStoredUser: () => null,
@@ -15,33 +13,14 @@ vi.mock('./api/auth', () => ({
   apiLogin: vi.fn(),
 }))
 
-const renderWithProviders = (component: React.ReactNode) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  })
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>{component}</AuthProvider>
-    </QueryClientProvider>
-  )
-}
-
 describe('App', () => {
-  it('renders the login page when not authenticated', async () => {
-    renderWithProviders(<App />)
+  it('renders the Login placeholder when not authenticated', async () => {
+    render(<App />)
+    // Phase 2: Gate renders <ScreenComingSoon name="Login" /> for unauthed users.
+    // Phase 3a swaps this for the real LoginPage.
     await waitFor(() => {
-      expect(screen.getByText('Sign in to your account')).toBeInTheDocument()
+      expect(screen.getByText('Login')).toBeInTheDocument()
     })
-  })
-
-  it('shows sign in button', async () => {
-    renderWithProviders(<App />)
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
-    })
+    expect(screen.getByText('Coming soon in Phase 3.')).toBeInTheDocument()
   })
 })
