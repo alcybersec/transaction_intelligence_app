@@ -1,7 +1,7 @@
 """Create savings_goals table.
 
 Revision ID: 008_savings_goals
-Revises: 006_chat_tables
+Revises: 007_is_recurring
 Create Date: 2026-06-10 00:00:00.000000
 """
 
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "008_savings_goals"
-down_revision: str | None = "006_chat_tables"
+down_revision: str | None = "007_is_recurring"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
