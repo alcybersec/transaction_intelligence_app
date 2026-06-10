@@ -14,13 +14,12 @@ vi.mock('./api/auth', () => ({
 }))
 
 describe('App', () => {
-  it('renders the Login placeholder when not authenticated', async () => {
+  it('renders the Login screen when not authenticated', async () => {
     render(<App />)
-    // Phase 2: Gate renders <ScreenComingSoon name="Login" /> for unauthed users.
-    // Phase 3a swaps this for the real LoginPage.
+    // Phase 3a: Gate renders the real <Login /> for unauthed users.
     await waitFor(() => {
-      expect(screen.getByText('Login')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
     })
-    expect(screen.getByText('Coming soon in Phase 3.')).toBeInTheDocument()
+    expect(screen.getByText(/Your data stays on your hardware/i)).toBeInTheDocument()
   })
 })
