@@ -5,6 +5,7 @@ from app.db.models.chat import ChatMessage, ChatSession
 from app.db.models.institution import Institution, Instrument, InstrumentType
 from app.db.models.message import Message, MessageSource, ParseMode, ParseStatus
 from app.db.models.report import Report, ReportGeneratedBy
+from app.db.models.savings_goal import SavingsGoal
 from app.db.models.transaction import (
     EvidenceRole,
     TransactionDirection,
@@ -54,6 +55,8 @@ __all__ = [
     # Report
     "Report",
     "ReportGeneratedBy",
+    # Savings goal
+    "SavingsGoal",
     # Chat
     "ChatSession",
     "ChatMessage",
