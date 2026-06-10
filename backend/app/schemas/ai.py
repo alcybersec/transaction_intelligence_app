@@ -253,17 +253,6 @@ class BatchSuggestResponse(BaseModel):
 # === AI Settings ===
 
 
-class AISettingsResponse(BaseModel):
-    """Response for AI settings."""
-
-    ollama_configured: bool
-    ollama_base_url: str | None
-    ollama_model: str
-    ollama_connected: bool
-    available_models: list[str]
-    parse_modes_available: list[str] = ["regex", "ollama", "hybrid"]
-
-
 class AISettingsUpdateRequest(BaseModel):
     """Request to update AI settings (for future use)."""
 

@@ -19,12 +19,9 @@ export interface OllamaStatus {
 }
 
 export interface AISettings {
-  ollama_configured: boolean
   ollama_base_url: string | null
-  ollama_model: string
-  ollama_connected: boolean
-  available_models: string[]
-  parse_modes_available: string[]
+  ollama_model: string | null
+  features: Record<string, boolean>
 }
 
 export interface CategorySuggestion {
@@ -149,15 +146,9 @@ export async function fetchAISettings(): Promise<AISettings> {
 
 // === Persisted AI Settings (PATCH) ===
 
-export interface AISettingsFull {
-  ollama_base_url: string | null
-  ollama_model: string | null
-  features: Record<string, boolean>
-}
-
 export async function updateAISettings(
-  patch: Partial<AISettingsFull>
-): Promise<AISettingsFull> {
+  patch: Partial<AISettings>
+): Promise<AISettings> {
   const res = await authFetch(`${API_URL}/ai/settings`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
