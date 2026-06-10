@@ -147,6 +147,26 @@ export async function fetchAISettings(): Promise<AISettings> {
   return res.json()
 }
 
+// === Persisted AI Settings (PATCH) ===
+
+export interface AISettingsFull {
+  ollama_base_url: string | null
+  ollama_model: string | null
+  features: Record<string, boolean>
+}
+
+export async function updateAISettings(
+  patch: Partial<AISettingsFull>
+): Promise<AISettingsFull> {
+  const res = await authFetch(`${API_URL}/ai/settings`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) throw new Error(`updateAISettings: ${res.status}`)
+  return res.json()
+}
+
 // === Category Suggestions ===
 
 export async function fetchSuggestions(

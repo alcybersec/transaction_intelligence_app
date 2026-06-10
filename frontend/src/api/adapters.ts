@@ -174,3 +174,23 @@ export async function getAdapterParsers(institutionName: string): Promise<Parser
 
   return response.json()
 }
+
+export interface AdapterStats {
+  parsed_count: number
+  last_parsed_at: string | null
+}
+
+/**
+ * Get parsing stats for an adapter (parsed_count, last_parsed_at).
+ */
+export async function fetchAdapterStats(institutionName: string): Promise<AdapterStats> {
+  const response = await fetch(`${API_URL}/adapters/${institutionName}/stats`, {
+    headers: getAuthHeaders(),
+  })
+
+  if (!response.ok) {
+    throw new Error(`fetchAdapterStats: ${response.status}`)
+  }
+
+  return response.json()
+}
