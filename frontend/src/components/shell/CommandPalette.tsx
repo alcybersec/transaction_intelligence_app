@@ -32,7 +32,10 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ open, onClose, onNavigate }: CommandPaletteProps) {
   const navigateHook = useNavigate()
-  const nav = onNavigate ?? ((p: string) => navigateHook(p))
+  const nav = useMemo(
+    () => onNavigate ?? ((p: string) => navigateHook(p)),
+    [onNavigate, navigateHook],
+  )
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
 

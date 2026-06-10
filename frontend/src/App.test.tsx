@@ -10,7 +10,7 @@ vi.mock('./api/auth', () => ({
   clearAuth: vi.fn(),
   fetchCurrentUser: vi.fn(),
   refreshTokens: vi.fn(),
-  apiLogin: vi.fn(),
+  login: vi.fn(),
 }))
 
 describe('App', () => {

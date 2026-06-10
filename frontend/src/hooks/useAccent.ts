@@ -1,13 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
-import { applyTheme, readStoredAccent, readStoredTheme, type AccentName } from '@/lib/theme'
+import { useThemeContext } from '@/components/shell/ThemeProvider'
 
 export function useAccent() {
-  const [accent, setAccentState] = useState<AccentName>(() => readStoredAccent())
-
-  useEffect(() => {
-    applyTheme(readStoredTheme(), accent)
-  }, [accent])
-
-  const setAccent = useCallback((a: AccentName) => setAccentState(a), [])
+  const { accent, setAccent } = useThemeContext()
   return { accent, setAccent }
 }

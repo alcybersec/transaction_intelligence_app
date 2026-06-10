@@ -38,7 +38,7 @@ export function AccountDropdown({ user, open, onClose, onLogout }: AccountDropdo
   return (
     <div
       ref={ref}
-      className="absolute right-5 top-16 w-[250px] bg-surface border border-line rounded-lg shadow-md py-1.5 z-50 animate-fadeIn"
+      className="fixed right-5 top-16 w-[250px] bg-surface border border-line rounded-lg shadow-md py-1.5 z-50 animate-fadeIn"
     >
       <button
         onClick={() => {
