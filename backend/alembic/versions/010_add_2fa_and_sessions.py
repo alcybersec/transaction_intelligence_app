@@ -1,7 +1,7 @@
 """Add 2FA secret + user_sessions table.
 
 Revision ID: 010_2fa_sessions
-Revises: 006_chat_tables
+Revises: 009_user_email_prefs
 Create Date: 2026-06-10 00:00:00.000000
 """
 
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "010_2fa_sessions"
-down_revision: str | None = "006_chat_tables"
+down_revision: str | None = "009_user_email_prefs"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
