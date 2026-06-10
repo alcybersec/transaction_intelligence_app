@@ -162,6 +162,62 @@ export async function setupInitialUser(): Promise<{
   return res.json()
 }
 
+// ============== 2FA ==============
+
+export interface TwoFactorEnableResponse {
+  secret: string
+  otpauth_url: string
+}
+
+export async function enable2FA(): Promise<TwoFactorEnableResponse> {
+  const r = await authFetch(`${API_URL}/auth/2fa/enable`, { method: 'POST' })
+  if (!r.ok) throw new Error(`enable2FA: ${r.status}`)
+  return r.json()
+}
+
+export async function verify2FA(code: string): Promise<{ verified: boolean }> {
+  const r = await authFetch(`${API_URL}/auth/2fa/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+  if (!r.ok) throw new Error(`verify2FA: ${r.status}`)
+  return r.json()
+}
+
+export async function disable2FA(): Promise<void> {
+  const r = await authFetch(`${API_URL}/auth/2fa`, { method: 'DELETE' })
+  if (!r.ok) throw new Error(`disable2FA: ${r.status}`)
+}
+
+// ============== Sessions ==============
+
+export interface UserSessionRow {
+  id: string
+  user_agent: string | null
+  ip_address: string | null
+  created_at: string
+  last_seen_at: string
+}
+
+export async function fetchSessions(): Promise<UserSessionRow[]> {
+  const r = await authFetch(`${API_URL}/auth/sessions`)
+  if (!r.ok) throw new Error(`fetchSessions: ${r.status}`)
+  return r.json()
+}
+
+export async function revokeAllSessions(): Promise<void> {
+  const r = await authFetch(`${API_URL}/auth/sessions`, { method: 'DELETE' })
+  if (!r.ok) throw new Error(`revokeAllSessions: ${r.status}`)
+}
+
+export async function revokeSession(sessionId: string): Promise<void> {
+  const r = await authFetch(`${API_URL}/auth/sessions/${sessionId}`, {
+    method: 'DELETE',
+  })
+  if (!r.ok) throw new Error(`revokeSession: ${r.status}`)
+}
+
 // ============== Authenticated Fetch Helper ==============
 
 export async function authFetch(
