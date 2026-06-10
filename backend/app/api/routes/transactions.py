@@ -1,6 +1,6 @@
 """Transaction API endpoints."""
 
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -174,10 +174,12 @@ async def transactions_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     wallet_id: UUID | None = Query(None),
+    vendor_id: UUID | None = Query(None),
     category_id: UUID | None = Query(None),
     direction: str | None = Query(None),
-    date_from: date | None = Query(None),
-    date_to: date | None = Query(None),
+    status: str | None = Query(None),
+    date_from: datetime | None = Query(None),
+    date_to: datetime | None = Query(None),
     amount_min: Decimal | None = Query(None),
     amount_max: Decimal | None = Query(None),
     search: str | None = Query(None),
@@ -185,13 +187,16 @@ async def transactions_summary(
     """
     Aggregate totals for transactions matching the given filters.
 
-    Mirrors the filter set on the list endpoint (minus pagination/status).
+    Mirrors the filter set on the list endpoint (minus pagination).
     Returns total debit/credit/net amounts, counts, and average debit.
     """
     query = db.query(TransactionGroup)
 
     if wallet_id:
         query = query.filter(TransactionGroup.wallet_id == wallet_id)
+
+    if vendor_id:
+        query = query.filter(TransactionGroup.vendor_id == vendor_id)
 
     if category_id:
         query = query.filter(TransactionGroup.category_id == category_id)
@@ -200,6 +205,13 @@ async def transactions_summary(
         try:
             dir_enum = TransactionDirection(direction)
             query = query.filter(TransactionGroup.direction == dir_enum)
+        except ValueError:
+            pass
+
+    if status:
+        try:
+            status_enum = TransactionStatus(status)
+            query = query.filter(TransactionGroup.status == status_enum)
         except ValueError:
             pass
 
