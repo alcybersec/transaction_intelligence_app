@@ -9,7 +9,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 export interface User {
   id: string
   username: string
+  email?: string | null
   display_name: string | null
+  preferences?: Record<string, unknown>
   is_admin: boolean
   is_active: boolean
   created_at: string
@@ -192,4 +194,30 @@ export async function authFetch(
   }
 
   return res
+}
+
+// ============== Profile Update / Delete ==============
+
+export async function updateProfile(patch: {
+  email?: string
+  display_name?: string
+  preferences?: Record<string, unknown>
+}): Promise<User> {
+  const res = await authFetch(`${API_URL}/auth/me`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) {
+    throw new Error(`updateProfile: ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function deleteAccount(): Promise<void> {
+  const res = await authFetch(`${API_URL}/auth/me`, { method: 'DELETE' })
+  if (!res.ok) {
+    throw new Error(`deleteAccount: ${res.status}`)
+  }
+  clearAuth()
 }
