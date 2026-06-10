@@ -14,6 +14,7 @@ from app.db.models.transaction import (
     TransactionStatus,
 )
 from app.db.models.user import User
+from app.db.models.user_session import UserSession
 from app.db.models.vendor import (
     Category,
     CategorySuggestion,
@@ -50,6 +51,7 @@ __all__ = [
     "EvidenceRole",
     # User
     "User",
+    "UserSession",
     # Budget
     "Budget",
     # Report
