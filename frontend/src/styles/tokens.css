@@ -39,6 +39,18 @@
   --maxw: 1240px;
 }
 
+/* Lift content cap on wider screens so ultrawide displays don't waste room.
+   Below 1600px viewports the handoff's 1240px intent is preserved. */
+@media (min-width: 1600px) {
+  :root { --maxw: 1440px; }
+}
+@media (min-width: 1920px) {
+  :root { --maxw: 1600px; }
+}
+@media (min-width: 2400px) {
+  :root { --maxw: 1800px; }
+}
+
 /* ---- Light ---- */
 :root,
 [data-theme='light'] {

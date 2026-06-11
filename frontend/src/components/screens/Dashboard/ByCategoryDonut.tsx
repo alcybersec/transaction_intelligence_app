@@ -50,7 +50,7 @@ export function ByCategoryDonut({ ym }: ByCategoryDonutProps) {
             size={150}
             thickness={18}
             centerLabel={centerLabel}
-            centerAmount={fmt.money(centerAmount)}
+            centerAmount={fmt.moneyWhole(centerAmount)}
             centerSuffix={centerPct ?? currency}
           />
           <ul className="flex-1 min-w-[160px] flex flex-col gap-1.5 text-[13px]">

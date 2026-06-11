@@ -17,6 +17,12 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Global scale-up so text, charts, and spacing feel right on larger displays.
+     CSS zoom scales everything (including SVG and layout sizes) uniformly. */
+  body {
+    zoom: 1.12;
+  }
+
   h1, h2, h3, h4, h5, h6, .serif {
     font-family: var(--font-serif);
     font-weight: 500;
