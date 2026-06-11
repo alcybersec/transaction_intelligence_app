@@ -80,7 +80,14 @@ async def list_transactions(
     current_user: User = Depends(get_current_user),
     wallet_id: UUID | None = Query(None),
     vendor_id: UUID | None = Query(None),
-    category_id: UUID | None = Query(None),
+    category_id: list[UUID] = Query(
+        default=[],
+        description="Filter to these categories (OR). Repeat the param to include multiple.",
+    ),
+    category_id_not: list[UUID] = Query(
+        default=[],
+        description="Exclude these categories. Repeat to exclude multiple.",
+    ),
     direction: str | None = Query(None),
     status: str | None = Query(None),
     date_from: datetime | None = Query(None),
@@ -98,7 +105,8 @@ async def list_transactions(
     Supports filtering by:
     - wallet_id: Filter by wallet
     - vendor_id: Filter by vendor
-    - category_id: Filter by category
+    - category_id: Filter to these categories (OR semantics). Repeatable.
+    - category_id_not: Exclude these categories (NULL-safe). Repeatable.
     - direction: "debit" or "credit"
     - status: "posted", "reversed", "refunded", "unknown"
     - date_from/date_to: Date range (occurred_at)
@@ -117,7 +125,15 @@ async def list_transactions(
         query = query.filter(TransactionGroup.vendor_id == vendor_id)
 
     if category_id:
-        query = query.filter(TransactionGroup.category_id == category_id)
+        query = query.filter(TransactionGroup.category_id.in_(category_id))
+
+    if category_id_not:
+        # NULL-safe: a transaction with no category should NOT be excluded.
+        # The user excluded specific categories, not "uncategorized".
+        query = query.filter(
+            (TransactionGroup.category_id.is_(None))
+            | (~TransactionGroup.category_id.in_(category_id_not))
+        )
 
     if direction:
         try:
@@ -183,7 +199,14 @@ async def transactions_summary(
     current_user: User = Depends(get_current_user),
     wallet_id: UUID | None = Query(None),
     vendor_id: UUID | None = Query(None),
-    category_id: UUID | None = Query(None),
+    category_id: list[UUID] = Query(
+        default=[],
+        description="Filter to these categories (OR). Repeat the param to include multiple.",
+    ),
+    category_id_not: list[UUID] = Query(
+        default=[],
+        description="Exclude these categories. Repeat to exclude multiple.",
+    ),
     direction: str | None = Query(None),
     status: str | None = Query(None),
     date_from: datetime | None = Query(None),
@@ -207,7 +230,14 @@ async def transactions_summary(
         query = query.filter(TransactionGroup.vendor_id == vendor_id)
 
     if category_id:
-        query = query.filter(TransactionGroup.category_id == category_id)
+        query = query.filter(TransactionGroup.category_id.in_(category_id))
+
+    if category_id_not:
+        # NULL-safe: uncategorized rows are NOT dropped by category excludes.
+        query = query.filter(
+            (TransactionGroup.category_id.is_(None))
+            | (~TransactionGroup.category_id.in_(category_id_not))
+        )
 
     if direction:
         try:
