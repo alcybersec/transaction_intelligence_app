@@ -99,6 +99,7 @@ def _build_vendor_response(
     response = VendorResponse(
         id=vendor.id,
         canonical_name=vendor.canonical_name,
+        is_recurring=vendor.is_recurring,
         created_at=vendor.created_at,
         updated_at=vendor.updated_at,
         alias_count=alias_count,
@@ -227,6 +228,7 @@ async def get_vendor(
     return VendorDetailResponse(
         id=vendor.id,
         canonical_name=vendor.canonical_name,
+        is_recurring=vendor.is_recurring,
         created_at=vendor.created_at,
         updated_at=vendor.updated_at,
         alias_count=len(aliases),
@@ -298,6 +300,9 @@ async def update_vendor(
             )
 
         vendor.canonical_name = normalized
+
+    if payload.is_recurring is not None:
+        vendor.is_recurring = payload.is_recurring
 
     vendor.updated_at = datetime.utcnow()
     db.commit()

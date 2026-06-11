@@ -38,6 +38,7 @@ class VendorResponse(BaseModel):
 
     id: UUID
     canonical_name: str
+    is_recurring: bool = False
     created_at: datetime
     updated_at: datetime
     # Optional expanded fields
@@ -77,6 +78,7 @@ class VendorUpdateRequest(BaseModel):
     """Request to update a vendor."""
 
     canonical_name: str | None = Field(None, min_length=1, max_length=255)
+    is_recurring: bool | None = None
 
 
 class VendorCategoryRuleRequest(BaseModel):
