@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -32,19 +32,6 @@ const queryClient = new QueryClient({
   },
 })
 
-// Lazy import so the dev page is dropped from production bundles
-const KitchenSink = lazy(() =>
-  import('./components/_kitchen-sink/KitchenSink').then((m) => ({ default: m.KitchenSink })),
-)
-
-function KitchenSinkLazy() {
-  return (
-    <Suspense fallback={<div className="p-8 text-center text-text-2">Loading…</div>}>
-      <KitchenSink />
-    </Suspense>
-  )
-}
-
 function AuthedShell() {
   const { user, logout } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -71,9 +58,6 @@ function AuthedShell() {
           <Route path="/vendors" element={<Vendors />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/settings/*" element={<Settings />} />
-          {import.meta.env.DEV && (
-            <Route path="/_kitchen-sink" element={<KitchenSinkLazy />} />
-          )}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
