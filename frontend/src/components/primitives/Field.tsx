@@ -11,9 +11,9 @@ interface FieldProps {
 
 export function Field({ label, hint, error, className, children }: FieldProps) {
   return (
-    <div className={cn('flex flex-col gap-1', className)}>
+    <label className={cn('flex flex-col gap-1', className)}>
       {label && (
-        <div className="text-[11px] uppercase tracking-wide text-text-2">{label}</div>
+        <span className="text-[11px] uppercase tracking-wide text-text-2">{label}</span>
       )}
       {children}
       {error ? (
@@ -21,6 +21,6 @@ export function Field({ label, hint, error, className, children }: FieldProps) {
       ) : hint ? (
         <div className="text-[11px] text-text-3">{hint}</div>
       ) : null}
-    </div>
+    </label>
   )
 }
