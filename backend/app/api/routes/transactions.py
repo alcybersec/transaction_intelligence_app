@@ -78,7 +78,14 @@ def _build_transaction_response(
 async def list_transactions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    wallet_id: UUID | None = Query(None),
+    wallet_id: list[UUID] = Query(
+        default=[],
+        description="Filter to these wallets (OR). Repeat the param to include multiple.",
+    ),
+    wallet_id_not: list[UUID] = Query(
+        default=[],
+        description="Exclude these wallets. Repeat to exclude multiple.",
+    ),
     vendor_id: UUID | None = Query(None),
     category_id: list[UUID] = Query(
         default=[],
@@ -103,7 +110,8 @@ async def list_transactions(
     List transactions with optional filters.
 
     Supports filtering by:
-    - wallet_id: Filter by wallet
+    - wallet_id: Filter to these wallets (OR semantics). Repeatable.
+    - wallet_id_not: Exclude these wallets (NULL-safe). Repeatable.
     - vendor_id: Filter by vendor
     - category_id: Filter to these categories (OR semantics). Repeatable.
     - category_id_not: Exclude these categories (NULL-safe). Repeatable.
@@ -119,7 +127,14 @@ async def list_transactions(
 
     # Apply filters
     if wallet_id:
-        query = query.filter(TransactionGroup.wallet_id == wallet_id)
+        query = query.filter(TransactionGroup.wallet_id.in_(wallet_id))
+
+    if wallet_id_not:
+        # NULL-safe: rows with no wallet aren't dropped by a wallet exclusion.
+        query = query.filter(
+            (TransactionGroup.wallet_id.is_(None))
+            | (~TransactionGroup.wallet_id.in_(wallet_id_not))
+        )
 
     if vendor_id:
         query = query.filter(TransactionGroup.vendor_id == vendor_id)
@@ -197,7 +212,14 @@ async def list_transactions(
 async def transactions_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    wallet_id: UUID | None = Query(None),
+    wallet_id: list[UUID] = Query(
+        default=[],
+        description="Filter to these wallets (OR). Repeat the param to include multiple.",
+    ),
+    wallet_id_not: list[UUID] = Query(
+        default=[],
+        description="Exclude these wallets. Repeat to exclude multiple.",
+    ),
     vendor_id: UUID | None = Query(None),
     category_id: list[UUID] = Query(
         default=[],
@@ -224,7 +246,14 @@ async def transactions_summary(
     query = db.query(TransactionGroup)
 
     if wallet_id:
-        query = query.filter(TransactionGroup.wallet_id == wallet_id)
+        query = query.filter(TransactionGroup.wallet_id.in_(wallet_id))
+
+    if wallet_id_not:
+        # NULL-safe: rows with no wallet aren't dropped by a wallet exclusion.
+        query = query.filter(
+            (TransactionGroup.wallet_id.is_(None))
+            | (~TransactionGroup.wallet_id.in_(wallet_id_not))
+        )
 
     if vendor_id:
         query = query.filter(TransactionGroup.vendor_id == vendor_id)
