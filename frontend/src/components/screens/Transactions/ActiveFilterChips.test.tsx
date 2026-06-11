@@ -4,7 +4,10 @@ import { ActiveFilterChips } from './ActiveFilterChips'
 import { EMPTY_FILTERS, type UiFilters } from './types'
 
 const wallets = [{ id: 'w1', name: 'Personal' }]
-const categories = [{ id: 'c1', name: 'Groceries' }]
+const categories = [
+  { id: 'c1', name: 'Groceries' },
+  { id: 'c2', name: 'Transport' },
+]
 
 function setup(filters: Partial<UiFilters>) {
   const merged: UiFilters = { ...EMPTY_FILTERS, ...filters }
@@ -83,6 +86,28 @@ describe('ActiveFilterChips', () => {
     fireEvent.click(screen.getByRole('button', { name: /recurring only/i }))
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ recurring: '' })
+    )
+  })
+
+  it('renders an include chip per category in category_ids_include', () => {
+    const { onChange } = setup({ category_ids_include: ['c1', 'c2'] })
+    expect(
+      screen.getByRole('button', { name: /include: groceries/i })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /include: transport/i })
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /include: groceries/i }))
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ category_ids_include: ['c2'] })
+    )
+  })
+
+  it('renders an exclude chip per category in category_ids_exclude', () => {
+    const { onChange } = setup({ category_ids_exclude: ['c1'] })
+    fireEvent.click(screen.getByRole('button', { name: /exclude: groceries/i }))
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ category_ids_exclude: [] })
     )
   })
 })

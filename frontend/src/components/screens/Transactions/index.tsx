@@ -21,7 +21,8 @@ function toApiFilters(ui: UiFilters, page: number): TransactionFilters {
   if (ui.search) out.search = ui.search
   if (ui.direction) out.direction = ui.direction
   if (ui.wallet_id) out.wallet_id = ui.wallet_id
-  if (ui.category_id) out.category_id = ui.category_id
+  if (ui.category_ids_include.length > 0) out.category_id_include = ui.category_ids_include
+  if (ui.category_ids_exclude.length > 0) out.category_id_exclude = ui.category_ids_exclude
   if (ui.date_from) out.date_from = ui.date_from
   if (ui.date_to) out.date_to = ui.date_to
   const minN = Number(ui.amount_min)
@@ -34,7 +35,9 @@ function toApiFilters(ui: UiFilters, page: number): TransactionFilters {
 }
 
 function hasAnyFilter(ui: UiFilters): boolean {
-  return Object.values(ui).some((v) => v !== '')
+  return Object.values(ui).some((v) =>
+    Array.isArray(v) ? v.length > 0 : v !== ''
+  )
 }
 
 export function Transactions() {
@@ -78,7 +81,8 @@ export function Transactions() {
     if (filters.search) n++
     if (filters.direction) n++
     if (filters.wallet_id) n++
-    if (filters.category_id) n++
+    n += filters.category_ids_include.length
+    n += filters.category_ids_exclude.length
     if (filters.date_from || filters.date_to) n++
     if (filters.amount_min) n++
     if (filters.amount_max) n++
