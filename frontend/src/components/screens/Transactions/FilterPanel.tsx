@@ -3,12 +3,11 @@ import { Card } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
 import { Input } from '@/components/primitives/Input'
-import { Select } from '@/components/primitives/Select'
 import { Segmented } from '@/components/primitives/Segmented'
 import { Icon } from '@/components/icons/Icon'
-import { useWallets } from '@/hooks/useWallets'
 import { cn } from '@/lib/cn'
 import { CategoryPicker, CategoryPickerPanel } from './CategoryPicker'
+import { WalletPicker, WalletPickerPanel } from './WalletPicker'
 import type { UiFilters, DatePreset } from './types'
 
 interface FilterPanelProps {
@@ -86,8 +85,6 @@ export function FilterPanel({
   matchCount,
   onClose,
 }: FilterPanelProps) {
-  const wallets = useWallets()
-  const walletId = useId()
   const fromId = useId()
   const toId = useId()
 
@@ -96,6 +93,9 @@ export function FilterPanel({
   }
 
   const inferredPreset = inferDatePreset(filters)
+  const [walletsOpen, setWalletsOpen] = useState<boolean>(
+    filters.wallet_ids_include.length + filters.wallet_ids_exclude.length > 0
+  )
   const [categoriesOpen, setCategoriesOpen] = useState<boolean>(
     filters.category_ids_include.length + filters.category_ids_exclude.length > 0
   )
@@ -177,19 +177,21 @@ export function FilterPanel({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label={<label htmlFor={walletId}>Wallet</label>}>
-            <Select
-              id={walletId}
-              value={filters.wallet_id}
-              onChange={(e) => set('wallet_id', e.target.value)}
-            >
-              <option value="">All wallets</option>
-              {(wallets.data ?? []).map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </Select>
+          <Field label="Wallets">
+            <WalletPicker
+              selfContained={false}
+              open={walletsOpen}
+              onToggle={() => setWalletsOpen((v) => !v)}
+              include={filters.wallet_ids_include}
+              exclude={filters.wallet_ids_exclude}
+              onChange={(next) =>
+                onChange({
+                  ...filters,
+                  wallet_ids_include: next.include,
+                  wallet_ids_exclude: next.exclude,
+                })
+              }
+            />
           </Field>
           <Field label="Categories">
             <CategoryPicker
@@ -208,6 +210,18 @@ export function FilterPanel({
             />
           </Field>
         </div>
+        <WalletPickerPanel
+          open={walletsOpen}
+          include={filters.wallet_ids_include}
+          exclude={filters.wallet_ids_exclude}
+          onChange={(next) =>
+            onChange({
+              ...filters,
+              wallet_ids_include: next.include,
+              wallet_ids_exclude: next.exclude,
+            })
+          }
+        />
         <CategoryPickerPanel
           open={categoriesOpen}
           include={filters.category_ids_include}

@@ -17,7 +17,8 @@ export type DatePreset =
 export interface UiFilters {
   search: string
   direction: '' | 'debit' | 'credit'
-  wallet_id: string
+  wallet_ids_include: string[]
+  wallet_ids_exclude: string[]
   category_ids_include: string[]
   category_ids_exclude: string[]
   date_from: string
@@ -30,7 +31,8 @@ export interface UiFilters {
 export const EMPTY_FILTERS: UiFilters = {
   search: '',
   direction: '',
-  wallet_id: '',
+  wallet_ids_include: [],
+  wallet_ids_exclude: [],
   category_ids_include: [],
   category_ids_exclude: [],
   date_from: '',

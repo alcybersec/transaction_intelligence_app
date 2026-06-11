@@ -67,13 +67,34 @@ export function ActiveFilterChips({
       clear: () => set({ direction: '' }),
     })
   }
-  if (filters.wallet_id) {
-    const w = wallets.find((w) => w.id === filters.wallet_id)
+  for (const id of filters.wallet_ids_include) {
+    const w = wallets.find((w) => w.id === id)
     chips.push({
-      key: 'wallet',
-      label: w?.name ?? 'Wallet',
-      icon: 'wallet',
-      clear: () => set({ wallet_id: '' }),
+      key: `wallet-inc-${id}`,
+      label: `Wallet include: ${w?.name ?? 'Wallet'}`,
+      icon: 'check',
+      variant: 'accent',
+      clear: () =>
+        set({
+          wallet_ids_include: filters.wallet_ids_include.filter(
+            (x) => x !== id
+          ),
+        }),
+    })
+  }
+  for (const id of filters.wallet_ids_exclude) {
+    const w = wallets.find((w) => w.id === id)
+    chips.push({
+      key: `wallet-exc-${id}`,
+      label: `Wallet exclude: ${w?.name ?? 'Wallet'}`,
+      icon: 'minus',
+      variant: 'debit',
+      clear: () =>
+        set({
+          wallet_ids_exclude: filters.wallet_ids_exclude.filter(
+            (x) => x !== id
+          ),
+        }),
     })
   }
   for (const id of filters.category_ids_include) {
