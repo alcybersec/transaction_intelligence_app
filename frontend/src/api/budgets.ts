@@ -12,8 +12,9 @@ export interface Budget {
   id: string
   wallet_id: string | null
   wallet_name: string | null
-  category_id: string
-  category_name: string
+  // null = overall monthly budget (no specific category)
+  category_id: string | null
+  category_name: string | null
   category_icon: string | null
   category_color: string | null
   month: string
@@ -48,7 +49,8 @@ export interface BudgetSummary {
 
 export interface CreateBudgetRequest {
   wallet_id?: string
-  category_id: string
+  // Omit / undefined = overall monthly budget across all categories.
+  category_id?: string
   month: string
   limit_amount: string
   currency?: string

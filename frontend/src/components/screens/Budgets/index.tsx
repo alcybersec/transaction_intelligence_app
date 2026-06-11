@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/primitives/Button'
 import { Card } from '@/components/primitives/Card'
+import { Badge } from '@/components/primitives/Badge'
+import { Ring } from '@/components/charts/Ring'
+import { Progress } from '@/components/charts/Progress'
 import { Icon } from '@/components/icons/Icon'
 import { useToast } from '@/components/primitives/ToastContext'
 import { addMonths, monthLabel, ymKey, type YMKey } from '@/lib/dates'
-import { parseMoney } from '@/lib/money'
+import { fmt, parseMoney } from '@/lib/money'
 import {
   useBudgets,
   useCreateBudget,
@@ -23,6 +26,7 @@ import { GoalsRow } from './GoalsRow'
 import { CategoryGrid } from './CategoryGrid'
 import { NewBudgetModal } from './NewBudgetModal'
 import { NewGoalModal } from './NewGoalModal'
+import type { BudgetProgress } from '@/api/budgets'
 
 // Default to the current month — budgets are forward-looking; lastCompleteMonth
 // is the dashboard default, but for Budgets we want the active period.
@@ -53,24 +57,41 @@ export function Budgets() {
   )
   const goals = goalsQuery.data ?? []
   const categories = categoriesQuery.data ?? []
-  const existingCategoryIds = useMemo(
-    () => budgets.map((b) => b.category_id),
+
+  // Split out the overall (no-category) budget so it can render as a hero
+  // card above the category grid.
+  const overallBudget = useMemo(
+    () => budgets.find((b) => b.category_id === null) ?? null,
     [budgets],
+  )
+  const categoryBudgets = useMemo(
+    () => budgets.filter((b) => b.category_id !== null),
+    [budgets],
+  )
+  const existingCategoryIds = useMemo(
+    () =>
+      categoryBudgets
+        .map((b) => b.category_id)
+        .filter((id): id is string => id !== null),
+    [categoryBudgets],
   )
 
   const { totalSpent, totalLimit, currency } = useMemo(() => {
     let spent = 0
     let limit = 0
     let cur = 'AED'
-    for (const b of budgets) {
+    // Only sum category budgets here — the overall budget renders separately
+    // and including it would double-count both the limit and the spend.
+    for (const b of categoryBudgets) {
       spent += parseMoney(b.spent_amount)
       limit += parseMoney(b.limit_amount)
       if (b.currency) cur = b.currency
     }
+    if (overallBudget?.currency) cur = overallBudget.currency
     return { totalSpent: spent, totalLimit: limit, currency: cur }
-  }, [budgets])
+  }, [categoryBudgets, overallBudget])
 
-  function handleCreateBudget(input: { category_id: string; limit_amount: string }) {
+  function handleCreateBudget(input: { category_id?: string; limit_amount: string }) {
     createBudget.mutate(
       { ...input, month },
       {
@@ -191,7 +212,15 @@ export function Budgets() {
       {isLoading ? (
         <Card className="mb-4 text-sm text-text-2">Loading…</Card>
       ) : (
-        <TotalRing totalSpent={totalSpent} totalLimit={totalLimit} currency={currency} />
+        <>
+          {overallBudget && (
+            <OverallBudgetCard
+              budget={overallBudget}
+              onDelete={handleDeleteBudget}
+            />
+          )}
+          <TotalRing totalSpent={totalSpent} totalLimit={totalLimit} currency={currency} />
+        </>
       )}
 
       <section className="mb-2">
@@ -219,7 +248,7 @@ export function Budgets() {
         <div className="mb-2">
           <h2 className="font-serif text-lg font-semibold">Monthly budgets</h2>
         </div>
-        <CategoryGrid budgets={budgets} month={month} onDelete={handleDeleteBudget} />
+        <CategoryGrid budgets={categoryBudgets} month={month} onDelete={handleDeleteBudget} />
       </section>
 
       <NewBudgetModal
@@ -227,6 +256,7 @@ export function Budgets() {
         onClose={() => setShowNewBudget(false)}
         categories={categories}
         existingCategoryIds={existingCategoryIds}
+        hasOverallBudget={overallBudget !== null}
         isSubmitting={createBudget.isPending}
         onSubmit={handleCreateBudget}
         currency={currency}
@@ -273,5 +303,67 @@ function MonthNav({ month, setMonth }: MonthNavProps) {
         <Icon name="chevron-right" size={16} />
       </button>
     </div>
+  )
+}
+
+interface OverallBudgetCardProps {
+  budget: BudgetProgress
+  onDelete: (id: string) => void
+}
+
+function OverallBudgetCard({ budget, onDelete }: OverallBudgetCardProps) {
+  const spent = parseMoney(budget.spent_amount)
+  const limit = parseMoney(budget.limit_amount)
+  const remaining = parseMoney(budget.remaining_amount)
+  const over = budget.is_over_budget
+  const max = limit > 0 ? limit : 1
+  const pct = Math.round(budget.percentage_used)
+  const currency = budget.currency || 'AED'
+
+  return (
+    <Card className="mb-4 flex flex-wrap items-center gap-6 border-accent/40">
+      <Ring value={spent} max={max} size={92} thickness={12} centerLabel={`${pct}%`} />
+      <div className="flex-1 min-w-[220px]">
+        <div className="flex items-center gap-2">
+          <div className="text-[13px] uppercase tracking-wide text-text-2">
+            Overall monthly budget
+          </div>
+          {over && (
+            <Badge tone="debit">
+              <Icon name="alert" size={12} />
+              Over
+            </Badge>
+          )}
+        </div>
+        <div className="font-serif tnum text-[28px] font-semibold leading-tight mt-0.5">
+          {fmt.money(spent)}
+          <span className="text-text-3 font-normal">
+            {' '}/ {fmt.money(limit)} {currency}
+          </span>
+        </div>
+        <div className="mt-2">
+          <Progress value={spent} max={max} />
+        </div>
+      </div>
+      <div className="text-right min-w-[130px]">
+        <div className="text-[13px] text-text-2">
+          {over ? 'Over by' : 'Remaining'}
+        </div>
+        <div
+          className="font-serif tnum text-[22px] font-semibold"
+          style={{ color: over ? 'var(--debit)' : 'var(--credit)' }}
+        >
+          {fmt.money(Math.abs(remaining))}
+        </div>
+      </div>
+      <button
+        type="button"
+        aria-label="Delete overall budget"
+        className="text-text-3 hover:text-debit transition-colors self-start"
+        onClick={() => onDelete(budget.id)}
+      >
+        <Icon name="trash" size={16} />
+      </button>
+    </Card>
   )
 }
