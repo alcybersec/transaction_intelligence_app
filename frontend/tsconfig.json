@@ -20,10 +20,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
-  "exclude": [
-    "src/components/AdaptersSettings.tsx",
-    "src/components/TransactionDetail.tsx",
-    "src/components/VendorList.tsx"
-  ]
+  "include": ["src"]
 }
