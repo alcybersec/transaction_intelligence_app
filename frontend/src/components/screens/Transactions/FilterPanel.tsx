@@ -8,7 +8,7 @@ import { Segmented } from '@/components/primitives/Segmented'
 import { Icon } from '@/components/icons/Icon'
 import { useWallets } from '@/hooks/useWallets'
 import { cn } from '@/lib/cn'
-import { CategoryPicker } from './CategoryPicker'
+import { CategoryPicker, CategoryPickerPanel } from './CategoryPicker'
 import type { UiFilters, DatePreset } from './types'
 
 interface FilterPanelProps {
@@ -96,6 +96,9 @@ export function FilterPanel({
   }
 
   const inferredPreset = inferDatePreset(filters)
+  const [categoriesOpen, setCategoriesOpen] = useState<boolean>(
+    filters.category_ids_include.length + filters.category_ids_exclude.length > 0
+  )
   // User can click "Custom" while a preset is technically active — we honor that
   // intent locally instead of inferring strictly from values.
   const [customMode, setCustomMode] = useState<boolean>(inferredPreset === 'custom')
@@ -188,21 +191,35 @@ export function FilterPanel({
               ))}
             </Select>
           </Field>
+          <Field label="Categories">
+            <CategoryPicker
+              selfContained={false}
+              open={categoriesOpen}
+              onToggle={() => setCategoriesOpen((v) => !v)}
+              include={filters.category_ids_include}
+              exclude={filters.category_ids_exclude}
+              onChange={(next) =>
+                onChange({
+                  ...filters,
+                  category_ids_include: next.include,
+                  category_ids_exclude: next.exclude,
+                })
+              }
+            />
+          </Field>
         </div>
-
-        <Field label="Categories">
-          <CategoryPicker
-            include={filters.category_ids_include}
-            exclude={filters.category_ids_exclude}
-            onChange={(next) =>
-              onChange({
-                ...filters,
-                category_ids_include: next.include,
-                category_ids_exclude: next.exclude,
-              })
-            }
-          />
-        </Field>
+        <CategoryPickerPanel
+          open={categoriesOpen}
+          include={filters.category_ids_include}
+          exclude={filters.category_ids_exclude}
+          onChange={(next) =>
+            onChange({
+              ...filters,
+              category_ids_include: next.include,
+              category_ids_exclude: next.exclude,
+            })
+          }
+        />
 
         <div>
           <div className="text-[11px] uppercase tracking-wide text-text-2 mb-2">
