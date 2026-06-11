@@ -188,20 +188,21 @@ export function FilterPanel({
               ))}
             </Select>
           </Field>
-          <Field label="Categories">
-            <CategoryPicker
-              include={filters.category_ids_include}
-              exclude={filters.category_ids_exclude}
-              onChange={(next) =>
-                onChange({
-                  ...filters,
-                  category_ids_include: next.include,
-                  category_ids_exclude: next.exclude,
-                })
-              }
-            />
-          </Field>
         </div>
+
+        <Field label="Categories">
+          <CategoryPicker
+            include={filters.category_ids_include}
+            exclude={filters.category_ids_exclude}
+            onChange={(next) =>
+              onChange({
+                ...filters,
+                category_ids_include: next.include,
+                category_ids_exclude: next.exclude,
+              })
+            }
+          />
+        </Field>
 
         <div>
           <div className="text-[11px] uppercase tracking-wide text-text-2 mb-2">
