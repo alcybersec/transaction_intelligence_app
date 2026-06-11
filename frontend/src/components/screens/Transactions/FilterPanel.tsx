@@ -142,38 +142,39 @@ export function FilterPanel({
   return (
     <Card className="mb-3">
       <div className="flex flex-col gap-4">
-        <div>
-          <div className="text-[11px] uppercase tracking-wide text-text-2 mb-2">
-            Direction
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-text-2 mb-2">
+              Direction
+            </div>
+            <Segmented
+              value={filters.direction || 'all'}
+              onChange={(v) =>
+                set('direction', v === 'all' ? '' : (v as 'debit' | 'credit'))
+              }
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'debit', label: 'Spent' },
+                { value: 'credit', label: 'Received' },
+              ]}
+            />
           </div>
-          <Segmented
-            value={filters.direction || 'all'}
-            onChange={(v) =>
-              set('direction', v === 'all' ? '' : (v as 'debit' | 'credit'))
-            }
-            options={[
-              { value: 'all', label: 'All' },
-              { value: 'debit', label: 'Spent' },
-              { value: 'credit', label: 'Received' },
-            ]}
-          />
-        </div>
-
-        <div>
-          <div className="text-[11px] uppercase tracking-wide text-text-2 mb-2">
-            Recurring
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-text-2 mb-2">
+              Recurring
+            </div>
+            <Segmented
+              value={filters.recurring || 'all'}
+              onChange={(v) =>
+                set('recurring', v === 'all' ? '' : (v as 'yes' | 'no'))
+              }
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'yes', label: 'Recurring' },
+                { value: 'no', label: 'One-off' },
+              ]}
+            />
           </div>
-          <Segmented
-            value={filters.recurring || 'all'}
-            onChange={(v) =>
-              set('recurring', v === 'all' ? '' : (v as 'yes' | 'no'))
-            }
-            options={[
-              { value: 'all', label: 'All' },
-              { value: 'yes', label: 'Recurring' },
-              { value: 'no', label: 'One-off' },
-            ]}
-          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
