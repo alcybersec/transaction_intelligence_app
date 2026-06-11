@@ -56,7 +56,10 @@ export interface TransactionListResponse {
 }
 
 export interface TransactionFilters {
+  /** @deprecated use wallet_id_include for the new multi-include picker */
   wallet_id?: string
+  wallet_id_include?: string[]
+  wallet_id_exclude?: string[]
   vendor_id?: string
   /** @deprecated use category_id_include for the new multi-include picker */
   category_id?: string
@@ -77,15 +80,17 @@ export interface TransactionFilters {
 /**
  * Build the URLSearchParams shared by list + summary endpoints.
  *
- * Both `category_id_include` and `category_id_exclude` are emitted as
- * repeated query params (e.g. `?category_id=a&category_id=b`).
+ * The include/exclude arrays for both wallets and categories are emitted
+ * as repeated query params (e.g. `?wallet_id=a&wallet_id=b`).
  */
 function buildFilterParams(filters: TransactionFilters): URLSearchParams {
   const qs = new URLSearchParams()
-  if (filters.wallet_id) qs.set('wallet_id', filters.wallet_id)
-  if (filters.vendor_id) qs.set('vendor_id', filters.vendor_id)
-  // Legacy single value kept for back-compat with callers outside the
+  // Legacy single values kept for back-compat with callers outside the
   // Transactions screen. The new pickers should populate the arrays.
+  if (filters.wallet_id) qs.append('wallet_id', filters.wallet_id)
+  ;(filters.wallet_id_include ?? []).forEach((id) => qs.append('wallet_id', id))
+  ;(filters.wallet_id_exclude ?? []).forEach((id) => qs.append('wallet_id_not', id))
+  if (filters.vendor_id) qs.set('vendor_id', filters.vendor_id)
   if (filters.category_id) qs.append('category_id', filters.category_id)
   ;(filters.category_id_include ?? []).forEach((id) => qs.append('category_id', id))
   ;(filters.category_id_exclude ?? []).forEach((id) => qs.append('category_id_not', id))

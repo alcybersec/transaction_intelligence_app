@@ -54,10 +54,12 @@ function setup(initial: UiFilters = EMPTY_FILTERS) {
 describe('FilterPanel', () => {
   it('propagates wallet selection through onChange', () => {
     const { onChange } = setup()
-    const walletSelect = screen.getByLabelText(/wallet/i) as HTMLSelectElement
-    fireEvent.change(walletSelect, { target: { value: 'w2' } })
+    // The wallet picker trigger summarizes state; clicking it expands the
+    // chip panel. Then clicking a wallet chip emits the new include array.
+    fireEvent.click(screen.getByText(/all wallets/i))
+    fireEvent.click(screen.getByText('Joint'))
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ wallet_id: 'w2' })
+      expect.objectContaining({ wallet_ids_include: ['w2'] })
     )
   })
 

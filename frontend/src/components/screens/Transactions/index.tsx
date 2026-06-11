@@ -20,7 +20,8 @@ function toApiFilters(ui: UiFilters, page: number): TransactionFilters {
   const out: TransactionFilters = { page, page_size: PAGE_SIZE }
   if (ui.search) out.search = ui.search
   if (ui.direction) out.direction = ui.direction
-  if (ui.wallet_id) out.wallet_id = ui.wallet_id
+  if (ui.wallet_ids_include.length > 0) out.wallet_id_include = ui.wallet_ids_include
+  if (ui.wallet_ids_exclude.length > 0) out.wallet_id_exclude = ui.wallet_ids_exclude
   if (ui.category_ids_include.length > 0) out.category_id_include = ui.category_ids_include
   if (ui.category_ids_exclude.length > 0) out.category_id_exclude = ui.category_ids_exclude
   if (ui.date_from) out.date_from = ui.date_from
@@ -80,7 +81,8 @@ export function Transactions() {
     let n = 0
     if (filters.search) n++
     if (filters.direction) n++
-    if (filters.wallet_id) n++
+    n += filters.wallet_ids_include.length
+    n += filters.wallet_ids_exclude.length
     n += filters.category_ids_include.length
     n += filters.category_ids_exclude.length
     if (filters.date_from || filters.date_to) n++

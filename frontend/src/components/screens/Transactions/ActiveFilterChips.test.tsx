@@ -55,11 +55,26 @@ describe('ActiveFilterChips', () => {
     )
   })
 
-  it('removes the wallet chip by id', () => {
-    const { onChange } = setup({ wallet_id: 'w1' })
-    fireEvent.click(screen.getByRole('button', { name: /personal/i }))
+  it('renders an include chip per wallet in wallet_ids_include', () => {
+    const { onChange } = setup({ wallet_ids_include: ['w1'] })
+    expect(
+      screen.getByRole('button', { name: /wallet include: personal/i })
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: /wallet include: personal/i })
+    )
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ wallet_id: '' })
+      expect.objectContaining({ wallet_ids_include: [] })
+    )
+  })
+
+  it('renders an exclude chip per wallet in wallet_ids_exclude', () => {
+    const { onChange } = setup({ wallet_ids_exclude: ['w1'] })
+    fireEvent.click(
+      screen.getByRole('button', { name: /wallet exclude: personal/i })
+    )
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ wallet_ids_exclude: [] })
     )
   })
 
@@ -76,7 +91,7 @@ describe('ActiveFilterChips', () => {
   })
 
   it('clear-all button calls onClearAll', () => {
-    const { onClear } = setup({ search: 'x', wallet_id: 'w1' })
+    const { onClear } = setup({ search: 'x', wallet_ids_include: ['w1'] })
     fireEvent.click(screen.getByRole('button', { name: /clear all/i }))
     expect(onClear).toHaveBeenCalled()
   })
