@@ -11,6 +11,10 @@ export const fmt = {
     const n = toNumber(v)
     return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   },
+  moneyWhole(v: MoneyInput): string {
+    const n = toNumber(v)
+    return Math.round(n).toLocaleString('en-US')
+  },
   shortMoney(v: MoneyInput): string {
     const n = toNumber(v)
     const abs = Math.abs(n)

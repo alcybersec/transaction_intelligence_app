@@ -61,12 +61,18 @@ export interface UpdateBudgetRequest {
 
 // ============== API Functions ==============
 
+// Backend expects an ISO date (YYYY-MM-DD). Frontend month state is YM (YYYY-MM).
+// Append -01 if no day component is present.
+function toIsoDate(month: string): string {
+  return /^\d{4}-\d{2}$/.test(month) ? `${month}-01` : month
+}
+
 export async function fetchBudgets(params: {
   month: string
   wallet_id?: string
 }): Promise<BudgetListResponse> {
   const searchParams = new URLSearchParams()
-  searchParams.set('month', params.month)
+  searchParams.set('month', toIsoDate(params.month))
   if (params.wallet_id) searchParams.set('wallet_id', params.wallet_id)
 
   const res = await authFetch(`${API_URL}/budgets?${searchParams}`)
@@ -79,7 +85,7 @@ export async function fetchBudgetSummary(params: {
   wallet_id?: string
 }): Promise<BudgetSummary> {
   const searchParams = new URLSearchParams()
-  searchParams.set('month', params.month)
+  searchParams.set('month', toIsoDate(params.month))
   if (params.wallet_id) searchParams.set('wallet_id', params.wallet_id)
 
   const res = await authFetch(`${API_URL}/budgets/summary?${searchParams}`)
@@ -94,10 +100,11 @@ export async function fetchBudget(id: string): Promise<BudgetProgress> {
 }
 
 export async function createBudget(data: CreateBudgetRequest): Promise<BudgetProgress> {
+  const payload = { ...data, month: toIsoDate(data.month) }
   const res = await authFetch(`${API_URL}/budgets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) {
     const error = await res.json().catch(() => ({}))
@@ -129,8 +136,8 @@ export async function copyBudgets(params: {
   wallet_id?: string
 }): Promise<BudgetListResponse> {
   const searchParams = new URLSearchParams()
-  searchParams.set('source_month', params.source_month)
-  searchParams.set('target_month', params.target_month)
+  searchParams.set('source_month', toIsoDate(params.source_month))
+  searchParams.set('target_month', toIsoDate(params.target_month))
   if (params.wallet_id) searchParams.set('wallet_id', params.wallet_id)
 
   const res = await authFetch(`${API_URL}/budgets/copy?${searchParams}`, {

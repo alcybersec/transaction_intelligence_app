@@ -39,7 +39,7 @@ export function TopBar({ user, onAvatarClick }: TopBarProps) {
           </span>
         </button>
 
-        <nav className="hidden md:flex flex-1 items-center justify-between gap-1 px-3">
+        <nav className="hidden md:flex flex-1 items-center justify-start gap-1 px-3">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
