@@ -18,6 +18,7 @@ from sqlalchemy import select
 
 from app.db.models import (
     Category,
+    EvidenceRole,
     Institution,
     Instrument,
     InstrumentType,
@@ -27,7 +28,6 @@ from app.db.models import (
     ParseStatus,
     TransactionDirection,
     TransactionEvidence,
-    EvidenceRole,
     TransactionGroup,
     TransactionStatus,
     User,
@@ -39,7 +39,6 @@ from app.db.models.budget import Budget
 from app.db.models.savings_goal import SavingsGoal
 from app.db.session import SessionLocal
 from app.services.auth import hash_password
-
 
 CATEGORIES = [
     ("Groceries", "shopping-cart", "#10b981"),
@@ -136,9 +135,9 @@ def get_or_create_user(db) -> User:
         db.add(user)
         db.commit()
         db.refresh(user)
-        print(f"Created demo user (username=demo, password=demo1234)")
+        print("Created demo user (username=demo, password=demo1234)")
     else:
-        print(f"Demo user already exists")
+        print("Demo user already exists")
     return user
 
 
@@ -186,7 +185,9 @@ def seed_institutions(db) -> dict[str, Institution]:
     return insts
 
 
-def seed_wallets_and_instruments(db, insts: dict[str, Institution]) -> tuple[Wallet, list[Instrument]]:
+def seed_wallets_and_instruments(
+    db, insts: dict[str, Institution]
+) -> tuple[Wallet, list[Instrument]]:
     wallet = db.scalar(select(Wallet).where(Wallet.name == "Personal"))
     if wallet is None:
         wallet = Wallet(
@@ -287,7 +288,9 @@ def seed_transactions(
     for vendor_name, cat_name, recurring, base_amount in VENDORS:
         vendor = vendors[vendor_name]
         category = cats[cat_name]
-        direction = TransactionDirection.CREDIT if cat_name == "Income" else TransactionDirection.DEBIT
+        direction = (
+            TransactionDirection.CREDIT if cat_name == "Income" else TransactionDirection.DEBIT
+        )
 
         # Choose cadence
         if recurring:
@@ -304,7 +307,9 @@ def seed_transactions(
 
         for i in range(n):
             day_offset = i * cadence_days + random.randint(0, 4)
-            ts = today - timedelta(days=day_offset, hours=random.randint(0, 23), minutes=random.randint(0, 59))
+            ts = today - timedelta(
+                days=day_offset, hours=random.randint(0, 23), minutes=random.randint(0, 59)
+            )
             if ts > today:
                 continue
 

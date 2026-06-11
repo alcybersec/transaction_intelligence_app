@@ -239,8 +239,7 @@ class MashreqAccountCreditParser:
 
     # Pattern for available balance
     BALANCE_PATTERN = re.compile(
-        r"(?:Avl\.?\s*Bal\.?|Available\s+Balance|Bal\.?)[:\s]*"
-        r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
+        r"(?:Avl\.?\s*Bal\.?|Available\s+Balance|Bal\.?)[:\s]*" r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
         re.IGNORECASE,
     )
 
@@ -381,8 +380,7 @@ class MashreqCardDebitParser:
     )
 
     BALANCE_PATTERN = re.compile(
-        r"(?:Avl\.?\s*(?:Bal\.?|Limit)|Available\s+Balance)[:\s]*"
-        r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
+        r"(?:Avl\.?\s*(?:Bal\.?|Limit)|Available\s+Balance)[:\s]*" r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
         re.IGNORECASE,
     )
 
