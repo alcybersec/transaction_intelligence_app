@@ -7,6 +7,7 @@ import type { Category } from '@/api/categories'
 const vendor: Vendor = {
   id: 'v1',
   canonical_name: 'Acme Coffee',
+  is_recurring: false,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
   alias_count: 1,
