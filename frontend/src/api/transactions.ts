@@ -58,7 +58,10 @@ export interface TransactionListResponse {
 export interface TransactionFilters {
   wallet_id?: string
   vendor_id?: string
+  /** @deprecated use category_id_include for the new multi-include picker */
   category_id?: string
+  category_id_include?: string[]
+  category_id_exclude?: string[]
   direction?: 'debit' | 'credit'
   status?: string
   date_from?: string
@@ -71,24 +74,38 @@ export interface TransactionFilters {
   page_size?: number
 }
 
+/**
+ * Build the URLSearchParams shared by list + summary endpoints.
+ *
+ * Both `category_id_include` and `category_id_exclude` are emitted as
+ * repeated query params (e.g. `?category_id=a&category_id=b`).
+ */
+function buildFilterParams(filters: TransactionFilters): URLSearchParams {
+  const qs = new URLSearchParams()
+  if (filters.wallet_id) qs.set('wallet_id', filters.wallet_id)
+  if (filters.vendor_id) qs.set('vendor_id', filters.vendor_id)
+  // Legacy single value kept for back-compat with callers outside the
+  // Transactions screen. The new pickers should populate the arrays.
+  if (filters.category_id) qs.append('category_id', filters.category_id)
+  ;(filters.category_id_include ?? []).forEach((id) => qs.append('category_id', id))
+  ;(filters.category_id_exclude ?? []).forEach((id) => qs.append('category_id_not', id))
+  if (filters.direction) qs.set('direction', filters.direction)
+  if (filters.status) qs.set('status', filters.status)
+  if (filters.date_from) qs.set('date_from', filters.date_from)
+  if (filters.date_to) qs.set('date_to', filters.date_to)
+  if (filters.amount_min !== undefined) qs.set('amount_min', String(filters.amount_min))
+  if (filters.amount_max !== undefined) qs.set('amount_max', String(filters.amount_max))
+  if (filters.search) qs.set('search', filters.search)
+  if (filters.recurring !== undefined) qs.set('recurring', String(filters.recurring))
+  return qs
+}
+
 // ============== API Functions ==============
 
 export async function fetchTransactions(
   filters: TransactionFilters = {}
 ): Promise<TransactionListResponse> {
-  const params = new URLSearchParams()
-
-  if (filters.wallet_id) params.set('wallet_id', filters.wallet_id)
-  if (filters.vendor_id) params.set('vendor_id', filters.vendor_id)
-  if (filters.category_id) params.set('category_id', filters.category_id)
-  if (filters.direction) params.set('direction', filters.direction)
-  if (filters.status) params.set('status', filters.status)
-  if (filters.date_from) params.set('date_from', filters.date_from)
-  if (filters.date_to) params.set('date_to', filters.date_to)
-  if (filters.amount_min !== undefined) params.set('amount_min', String(filters.amount_min))
-  if (filters.amount_max !== undefined) params.set('amount_max', String(filters.amount_max))
-  if (filters.search) params.set('search', filters.search)
-  if (filters.recurring !== undefined) params.set('recurring', String(filters.recurring))
+  const params = buildFilterParams(filters)
   if (filters.page) params.set('page', String(filters.page))
   if (filters.page_size) params.set('page_size', String(filters.page_size))
 
@@ -147,18 +164,12 @@ export interface TransactionsSummary {
 export async function fetchTransactionsSummary(
   filters: TransactionFilters = {}
 ): Promise<TransactionsSummary> {
-  const params = new URLSearchParams()
-
-  if (filters.wallet_id) params.set('wallet_id', filters.wallet_id)
-  if (filters.vendor_id) params.set('vendor_id', filters.vendor_id)
-  if (filters.category_id) params.set('category_id', filters.category_id)
-  if (filters.direction) params.set('direction', filters.direction)
-  if (filters.status) params.set('status', filters.status)
-  if (filters.date_from) params.set('date_from', filters.date_from)
-  if (filters.date_to) params.set('date_to', filters.date_to)
-  if (filters.amount_min !== undefined) params.set('amount_min', String(filters.amount_min))
-  if (filters.amount_max !== undefined) params.set('amount_max', String(filters.amount_max))
-  if (filters.search) params.set('search', filters.search)
+  // Summary endpoint ignores pagination + recurring; the helper already omits
+  // page/page_size, and the recurring param is harmless if the backend
+  // ignores it. Keep parity by stripping recurring here.
+  const stripped: TransactionFilters = { ...filters }
+  delete stripped.recurring
+  const params = buildFilterParams(stripped)
 
   const res = await authFetch(`${API_URL}/transactions/summary?${params}`)
   if (!res.ok) throw new Error('Failed to fetch transactions summary')

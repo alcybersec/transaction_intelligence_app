@@ -18,7 +18,8 @@ export interface UiFilters {
   search: string
   direction: '' | 'debit' | 'credit'
   wallet_id: string
-  category_id: string
+  category_ids_include: string[]
+  category_ids_exclude: string[]
   date_from: string
   date_to: string
   amount_min: string
@@ -30,7 +31,8 @@ export const EMPTY_FILTERS: UiFilters = {
   search: '',
   direction: '',
   wallet_id: '',
-  category_id: '',
+  category_ids_include: [],
+  category_ids_exclude: [],
   date_from: '',
   date_to: '',
   amount_min: '',

@@ -1,5 +1,6 @@
 import { Icon } from '@/components/icons/Icon'
 import { fmt } from '@/lib/money'
+import { cn } from '@/lib/cn'
 import type { UiFilters } from './types'
 
 interface WalletLite {
@@ -19,10 +20,13 @@ interface ActiveFilterChipsProps {
   categories: CategoryLite[]
 }
 
+type ChipVariant = 'accent' | 'debit'
+
 interface Chip {
   key: string
   label: string
   icon: string
+  variant?: ChipVariant
   clear: () => void
 }
 
@@ -72,13 +76,34 @@ export function ActiveFilterChips({
       clear: () => set({ wallet_id: '' }),
     })
   }
-  if (filters.category_id) {
-    const c = categories.find((c) => c.id === filters.category_id)
+  for (const id of filters.category_ids_include) {
+    const c = categories.find((c) => c.id === id)
     chips.push({
-      key: 'category',
-      label: c?.name ?? 'Category',
-      icon: 'tag',
-      clear: () => set({ category_id: '' }),
+      key: `category-inc-${id}`,
+      label: `Include: ${c?.name ?? 'Category'}`,
+      icon: 'check',
+      variant: 'accent',
+      clear: () =>
+        set({
+          category_ids_include: filters.category_ids_include.filter(
+            (x) => x !== id
+          ),
+        }),
+    })
+  }
+  for (const id of filters.category_ids_exclude) {
+    const c = categories.find((c) => c.id === id)
+    chips.push({
+      key: `category-exc-${id}`,
+      label: `Exclude: ${c?.name ?? 'Category'}`,
+      icon: 'minus',
+      variant: 'debit',
+      clear: () =>
+        set({
+          category_ids_exclude: filters.category_ids_exclude.filter(
+            (x) => x !== id
+          ),
+        }),
     })
   }
   if (filters.date_from || filters.date_to) {
@@ -131,7 +156,12 @@ export function ActiveFilterChips({
           key={c.key}
           type="button"
           onClick={c.clear}
-          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-accent-soft text-accent text-xs hover:opacity-80 transition-opacity"
+          className={cn(
+            'inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs hover:opacity-80 transition-opacity',
+            c.variant === 'debit'
+              ? 'bg-debit-soft text-debit'
+              : 'bg-accent-soft text-accent'
+          )}
         >
           <Icon name={c.icon} size={12} />
           <span>{c.label}</span>

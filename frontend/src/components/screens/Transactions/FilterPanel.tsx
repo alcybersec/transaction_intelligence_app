@@ -7,8 +7,8 @@ import { Select } from '@/components/primitives/Select'
 import { Segmented } from '@/components/primitives/Segmented'
 import { Icon } from '@/components/icons/Icon'
 import { useWallets } from '@/hooks/useWallets'
-import { useCategories } from '@/hooks/useCategories'
 import { cn } from '@/lib/cn'
+import { CategoryPicker } from './CategoryPicker'
 import type { UiFilters, DatePreset } from './types'
 
 interface FilterPanelProps {
@@ -87,9 +87,7 @@ export function FilterPanel({
   onClose,
 }: FilterPanelProps) {
   const wallets = useWallets()
-  const categories = useCategories()
   const walletId = useId()
-  const catId = useId()
   const fromId = useId()
   const toId = useId()
 
@@ -190,19 +188,18 @@ export function FilterPanel({
               ))}
             </Select>
           </Field>
-          <Field label={<label htmlFor={catId}>Category</label>}>
-            <Select
-              id={catId}
-              value={filters.category_id}
-              onChange={(e) => set('category_id', e.target.value)}
-            >
-              <option value="">All categories</option>
-              {(categories.data ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
+          <Field label="Categories">
+            <CategoryPicker
+              include={filters.category_ids_include}
+              exclude={filters.category_ids_exclude}
+              onChange={(next) =>
+                onChange({
+                  ...filters,
+                  category_ids_include: next.include,
+                  category_ids_exclude: next.exclude,
+                })
+              }
+            />
           </Field>
         </div>
 
