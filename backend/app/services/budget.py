@@ -44,18 +44,18 @@ class BudgetService:
         # Normalize month to first day
         month_start = request.month.replace(day=1)
 
-        # Check for existing budget
-        existing = (
-            self.db.query(Budget)
-            .filter(
-                Budget.wallet_id == request.wallet_id,
-                Budget.category_id == request.category_id,
-                Budget.month == month_start,
-            )
-            .first()
+        # Check for existing budget. category_id=None is a distinct slot
+        # ("overall monthly budget") so handle null explicitly.
+        existing_q = self.db.query(Budget).filter(
+            Budget.wallet_id == request.wallet_id,
+            Budget.month == month_start,
         )
-        if existing:
-            raise ValueError("Budget already exists for this category and month")
+        if request.category_id is None:
+            existing_q = existing_q.filter(Budget.category_id.is_(None))
+        else:
+            existing_q = existing_q.filter(Budget.category_id == request.category_id)
+        if existing_q.first():
+            raise ValueError("Budget already exists for this wallet/category/month")
 
         budget = Budget(
             wallet_id=request.wallet_id,
@@ -183,7 +183,15 @@ class BudgetService:
         total_spent = Decimal("0")
         over_budget_count = 0
 
+        # Skip the overall budget (category_id IS NULL) when summing — its
+        # limit covers all categories at once and its spent equals the sum of
+        # all month debits, so including it would double-count both totals.
+        # Frontend renders the overall budget as a separate hero card.
         for b in budgets_response.budgets:
+            if b.category_id is None:
+                if b.is_over_budget:
+                    over_budget_count += 1
+                continue
             total_budgeted += b.limit_amount
             total_spent += b.spent_amount
             if b.is_over_budget:
@@ -227,17 +235,18 @@ class BudgetService:
         created = []
 
         for source in source_budgets:
-            # Check if already exists
-            existing = (
-                self.db.query(Budget)
-                .filter(
-                    Budget.wallet_id == source.wallet_id,
-                    Budget.category_id == source.category_id,
-                    Budget.month == target_start,
-                )
-                .first()
+            # Check if already exists. ``category_id`` may be None for the
+            # overall-monthly-budget slot, so handle that explicitly — SQL
+            # equality with NULL never matches.
+            existing_q = self.db.query(Budget).filter(
+                Budget.wallet_id == source.wallet_id,
+                Budget.month == target_start,
             )
-            if existing:
+            if source.category_id is None:
+                existing_q = existing_q.filter(Budget.category_id.is_(None))
+            else:
+                existing_q = existing_q.filter(Budget.category_id == source.category_id)
+            if existing_q.first():
                 continue
 
             new_budget = Budget(
@@ -258,11 +267,15 @@ class BudgetService:
 
     def _calculate_spending(
         self,
-        category_id: UUID,
+        category_id: UUID | None,
         month: date,
         wallet_id: UUID | None = None,
     ) -> Decimal:
-        """Calculate total spending for a category in a month."""
+        """Calculate total spending for a category in a month.
+
+        When ``category_id`` is None this returns total debits across all
+        categories for the month — the "overall budget" denominator.
+        """
         # Get month boundaries
         month_start = datetime.combine(month.replace(day=1), datetime.min.time())
         if month.month == 12:
@@ -272,12 +285,14 @@ class BudgetService:
         month_end = datetime.combine(next_month, datetime.min.time())
 
         query = self.db.query(func.sum(TransactionGroup.amount)).filter(
-            TransactionGroup.category_id == category_id,
             TransactionGroup.direction == TransactionDirection.DEBIT,
             TransactionGroup.status == TransactionStatus.POSTED,
             TransactionGroup.occurred_at >= month_start,
             TransactionGroup.occurred_at < month_end,
         )
+
+        if category_id is not None:
+            query = query.filter(TransactionGroup.category_id == category_id)
 
         if wallet_id:
             query = query.filter(TransactionGroup.wallet_id == wallet_id)
@@ -294,12 +309,13 @@ class BudgetService:
         percentage = float(spent / budget.limit_amount * 100) if budget.limit_amount > 0 else 0.0
         is_over = spent > budget.limit_amount
 
+        # Overall budgets (category_id IS NULL) have no category metadata.
         return BudgetProgressResponse(
             id=budget.id,
             wallet_id=budget.wallet_id,
             wallet_name=budget.wallet.name if budget.wallet else None,
             category_id=budget.category_id,
-            category_name=budget.category.name if budget.category else "Unknown",
+            category_name=budget.category.name if budget.category else None,
             category_icon=budget.category.icon if budget.category else None,
             category_color=budget.category.color if budget.category else None,
             month=budget.month,

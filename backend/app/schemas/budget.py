@@ -11,7 +11,9 @@ class BudgetCreateRequest(BaseModel):
     """Request to create a new budget."""
 
     wallet_id: UUID | None = Field(None, description="Wallet scope (null for all wallets)")
-    category_id: UUID = Field(..., description="Category to budget")
+    category_id: UUID | None = Field(
+        None, description="Category to budget; null = overall monthly budget"
+    )
     month: date = Field(..., description="Budget month (first day of month)")
     limit_amount: Decimal = Field(..., gt=0, description="Budget limit amount")
     currency: str = Field(default="AED", min_length=3, max_length=3)
@@ -41,7 +43,8 @@ class BudgetResponse(BaseModel):
     id: UUID
     wallet_id: UUID | None
     wallet_name: str | None = None
-    category_id: UUID
+    # category_id null = overall monthly budget
+    category_id: UUID | None
     category_name: str | None = None
     category_icon: str | None = None
     category_color: str | None = None
@@ -60,8 +63,9 @@ class BudgetProgressResponse(BaseModel):
     id: UUID
     wallet_id: UUID | None
     wallet_name: str | None = None
-    category_id: UUID
-    category_name: str
+    # category_id null = overall monthly budget (all categories summed)
+    category_id: UUID | None
+    category_name: str | None = None
     category_icon: str | None = None
     category_color: str | None = None
     month: date
