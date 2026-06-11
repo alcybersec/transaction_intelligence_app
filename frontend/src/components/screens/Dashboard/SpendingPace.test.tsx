@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeCumulative, verdict } from './SpendingPace'
+import { computeCumulative, verdict } from './SpendingPace.helpers'
 
 describe('SpendingPace.computeCumulative', () => {
   it('cumulates daily debits', () => {

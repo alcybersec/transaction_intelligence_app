@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { TotalRing, ringTone } from './TotalRing'
+import { TotalRing } from './TotalRing'
+import { ringTone } from './TotalRing.helpers'
 
 describe('ringTone', () => {
   it('returns "accent" when usage <= 85%', () => {
