@@ -11,6 +11,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 export interface Vendor {
   id: string
   canonical_name: string
+  is_recurring: boolean
   created_at: string
   updated_at: string
   alias_count: number | null
@@ -132,4 +133,17 @@ export async function deleteVendorCategoryRule(
     method: 'DELETE',
   })
   if (!res.ok) throw new Error('Failed to delete category rule')
+}
+
+export async function updateVendorRecurring(
+  vendorId: string,
+  isRecurring: boolean
+): Promise<Vendor> {
+  const res = await authFetch(`${API_URL}/vendors/${vendorId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_recurring: isRecurring }),
+  })
+  if (!res.ok) throw new Error(`updateVendorRecurring failed: ${res.status}`)
+  return res.json()
 }

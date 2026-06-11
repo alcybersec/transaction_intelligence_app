@@ -267,6 +267,7 @@ export function Vendors() {
                   vendor={v}
                   categories={categories}
                   onSetRule={handleSetRule}
+                  isRecurring={v.is_recurring}
                 />
                 {showAI && sug && (
                   <SuggestionCard

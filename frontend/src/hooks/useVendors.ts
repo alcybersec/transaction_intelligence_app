@@ -3,6 +3,7 @@ import {
   fetchVendors,
   setVendorCategoryRule,
   deleteVendorCategoryRule,
+  updateVendorRecurring,
   type VendorFilters,
 } from '@/api/vendors'
 
@@ -39,6 +40,17 @@ export function useDeleteVendorRule() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vendors'] })
       qc.invalidateQueries({ queryKey: ['transactions'] })
+    },
+  })
+}
+
+export function useUpdateVendorRecurring() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ vendorId, isRecurring }: { vendorId: string; isRecurring: boolean }) =>
+      updateVendorRecurring(vendorId, isRecurring),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['vendors'] })
     },
   })
 }
