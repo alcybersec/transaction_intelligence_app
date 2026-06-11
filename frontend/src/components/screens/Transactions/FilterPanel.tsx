@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Card } from '@/components/primitives/Card'
 import { Button } from '@/components/primitives/Button'
 import { Field } from '@/components/primitives/Field'
@@ -97,12 +97,24 @@ export function FilterPanel({
     onChange({ ...filters, [key]: value })
   }
 
-  const datePreset = inferDatePreset(filters)
+  const inferredPreset = inferDatePreset(filters)
+  // User can click "Custom" while a preset is technically active — we honor that
+  // intent locally instead of inferring strictly from values.
+  const [customMode, setCustomMode] = useState<boolean>(inferredPreset === 'custom')
+
+  // If filters change such that the date range no longer matches a preset,
+  // surface that as custom automatically. If filters move BACK to matching
+  // a preset (e.g. by clicking This month), drop out of custom mode.
+  useEffect(() => {
+    if (inferredPreset === 'custom') setCustomMode(true)
+  }, [inferredPreset])
+
+  const datePreset: DatePreset = customMode ? 'custom' : inferredPreset
 
   const applyPreset = (preset: DatePreset) => {
     if (preset === 'custom') {
-      // Custom is shown when any date is set; if nothing is set yet, seed today
-      // so the date inputs render with placeholders the user can overwrite.
+      setCustomMode(true)
+      // Seed dates if none are set yet so the inputs aren't empty on first open.
       if (!filters.date_from && !filters.date_to) {
         const today = new Date()
         onChange({
@@ -113,6 +125,7 @@ export function FilterPanel({
       }
       return
     }
+    setCustomMode(false)
     const range = presetRange(preset)
     onChange({ ...filters, date_from: range.date_from, date_to: range.date_to })
   }
