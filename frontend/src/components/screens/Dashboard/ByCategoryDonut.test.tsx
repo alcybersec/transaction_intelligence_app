@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { categoriesToSlices } from './ByCategoryDonut'
+import { categoriesToSlices } from './ByCategoryDonut.helpers'
 
 describe('ByCategoryDonut.categoriesToSlices', () => {
   it('maps category responses to donut slices with rotating colors', () => {

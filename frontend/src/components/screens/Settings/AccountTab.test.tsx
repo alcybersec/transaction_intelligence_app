@@ -3,7 +3,8 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-import { AccountTab, scorePassword } from './AccountTab'
+import { AccountTab } from './AccountTab'
+import { scorePassword } from './AccountTab.helpers'
 import { ToastProvider } from '@/components/primitives/ToastContext'
 import type { User } from '@/api/auth'
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { Donut, computeSlices } from './Donut'
+import { Donut } from './Donut'
+import { computeSlices } from './Donut.helpers'
 
 describe('Donut.computeSlices', () => {
   it('returns slices summing to 100% (with rounding tolerance)', () => {
