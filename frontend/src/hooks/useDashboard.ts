@@ -12,11 +12,20 @@ interface DashboardParams {
   wallet_id?: string
 }
 
+interface CategoryBreakdownParams extends DashboardParams {
+  direction?: 'debit' | 'credit'
+}
+
+interface TopVendorsParams extends DashboardParams {
+  direction?: 'debit' | 'credit'
+  limit?: number
+}
+
 export const dashboardKey = (p: DashboardParams) => ['dashboard', p] as const
 export const timeseriesKey = (p: DashboardParams) => ['timeseries', p] as const
-export const categoryBreakdownKey = (p: DashboardParams) =>
+export const categoryBreakdownKey = (p: CategoryBreakdownParams) =>
   ['categories-breakdown', p] as const
-export const topVendorsKey = (p: DashboardParams) => ['top-vendors', p] as const
+export const topVendorsKey = (p: TopVendorsParams) => ['top-vendors', p] as const
 
 export function useDashboard(p: DashboardParams) {
   return useQuery({ queryKey: dashboardKey(p), queryFn: () => fetchDashboardAnalytics(p) })
@@ -26,10 +35,10 @@ export function useSpendingTimeSeries(p: DashboardParams) {
   return useQuery({ queryKey: timeseriesKey(p), queryFn: () => fetchSpendingTimeSeries(p) })
 }
 
-export function useCategoryBreakdown(p: DashboardParams) {
+export function useCategoryBreakdown(p: CategoryBreakdownParams) {
   return useQuery({ queryKey: categoryBreakdownKey(p), queryFn: () => fetchCategoryBreakdown(p) })
 }
 
-export function useTopVendors(p: DashboardParams) {
+export function useTopVendors(p: TopVendorsParams) {
   return useQuery({ queryKey: topVendorsKey(p), queryFn: () => fetchTopVendors(p) })
 }
