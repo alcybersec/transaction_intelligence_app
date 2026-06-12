@@ -15,6 +15,7 @@ export interface Category {
   color: string | null
   sort_order: number
   is_system: boolean
+  transaction_count: number
   created_at: string
   updated_at: string
 }

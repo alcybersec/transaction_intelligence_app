@@ -4,10 +4,11 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
-from app.db.models import Category, User
+from app.db.models import Category, TransactionGroup, User
 from app.db.session import get_db
 from app.schemas.category import (
     CategoryCreateRequest,
@@ -19,7 +20,7 @@ from app.schemas.category import (
 router = APIRouter()
 
 
-def _build_category_response(cat: Category) -> CategoryResponse:
+def _build_category_response(cat: Category, transaction_count: int = 0) -> CategoryResponse:
     """Build category response from model."""
     return CategoryResponse(
         id=cat.id,
@@ -28,6 +29,7 @@ def _build_category_response(cat: Category) -> CategoryResponse:
         color=cat.color,
         sort_order=cat.sort_order,
         is_system=cat.is_system,
+        transaction_count=transaction_count,
         created_at=cat.created_at,
         updated_at=cat.updated_at,
     )
@@ -38,11 +40,22 @@ async def list_categories(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CategoryListResponse:
-    """List all categories ordered by sort_order."""
+    """List all categories ordered by sort_order. Each row includes a lifetime transaction_count."""
     categories = db.query(Category).order_by(Category.sort_order, Category.name).all()
 
+    # Single GROUP BY query for counts, keyed by category_id
+    counts_query = (
+        db.query(TransactionGroup.category_id, func.count(TransactionGroup.id))
+        .filter(TransactionGroup.category_id.isnot(None))
+        .group_by(TransactionGroup.category_id)
+        .all()
+    )
+    counts = dict(counts_query)
+
     return CategoryListResponse(
-        categories=[_build_category_response(cat) for cat in categories],
+        categories=[
+            _build_category_response(cat, counts.get(cat.id, 0)) for cat in categories
+        ],
         total=len(categories),
     )
 

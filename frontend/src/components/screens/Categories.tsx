@@ -135,7 +135,10 @@ function CategoryTile({ category, onDelete }: TileProps) {
       </span>
       <div className="flex-1 min-w-0">
         <div className="font-semibold truncate">{category.name}</div>
-        <div className="text-xs text-text-2">0 transactions</div>
+        <div className="text-xs text-text-2">
+          {category.transaction_count.toLocaleString()} transaction
+          {category.transaction_count === 1 ? '' : 's'}
+        </div>
       </div>
       <Button
         variant="ghost"
