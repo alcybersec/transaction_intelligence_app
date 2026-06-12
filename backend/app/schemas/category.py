@@ -15,6 +15,7 @@ class CategoryResponse(BaseModel):
     color: str | None
     sort_order: int
     is_system: bool
+    transaction_count: int = 0
     created_at: datetime
     updated_at: datetime
 

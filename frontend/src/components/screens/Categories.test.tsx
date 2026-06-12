@@ -13,6 +13,7 @@ function makeCategory(overrides: Partial<Category> = {}): Category {
     color: 'var(--c1)',
     sort_order: 0,
     is_system: false,
+    transaction_count: 0,
     created_at: '2026-06-01T00:00:00Z',
     updated_at: '2026-06-01T00:00:00Z',
     ...overrides,
