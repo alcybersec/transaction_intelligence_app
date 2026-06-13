@@ -53,9 +53,7 @@ async def list_categories(
     counts = dict(counts_query)
 
     return CategoryListResponse(
-        categories=[
-            _build_category_response(cat, counts.get(cat.id, 0)) for cat in categories
-        ],
+        categories=[_build_category_response(cat, counts.get(cat.id, 0)) for cat in categories],
         total=len(categories),
     )
 
