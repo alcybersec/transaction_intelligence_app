@@ -1,6 +1,7 @@
 """Transaction API endpoints."""
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -22,6 +23,8 @@ from app.db.models import (
 )
 from app.db.session import get_db
 from app.schemas.transaction import (
+    BulkRecurringUpdate,
+    BulkUpdateResponse,
     ManualParseRequest,
     ManualParseResponse,
     ReviewQueueItem,
@@ -31,6 +34,8 @@ from app.schemas.transaction import (
     TransactionGroupListResponse,
     TransactionGroupResponse,
     TransactionNotesUpdate,
+    TransactionSummary,
+    TransactionUpdate,
 )
 from app.services.merge import MergeEngine
 from app.services.parsing import ParsingService
@@ -62,6 +67,7 @@ def _build_transaction_response(
         combined_balance_after=txn.combined_balance_after,
         status=txn.status.value,
         notes=txn.notes,
+        is_recurring=bool(txn.is_recurring),
         evidence_count=evidence_count or len(txn.evidence),
         created_at=txn.created_at,
         updated_at=txn.updated_at,
@@ -72,9 +78,23 @@ def _build_transaction_response(
 async def list_transactions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    wallet_id: UUID | None = Query(None),
+    wallet_id: list[UUID] = Query(
+        default=[],
+        description="Filter to these wallets (OR). Repeat the param to include multiple.",
+    ),
+    wallet_id_not: list[UUID] = Query(
+        default=[],
+        description="Exclude these wallets. Repeat to exclude multiple.",
+    ),
     vendor_id: UUID | None = Query(None),
-    category_id: UUID | None = Query(None),
+    category_id: list[UUID] = Query(
+        default=[],
+        description="Filter to these categories (OR). Repeat the param to include multiple.",
+    ),
+    category_id_not: list[UUID] = Query(
+        default=[],
+        description="Exclude these categories. Repeat to exclude multiple.",
+    ),
     direction: str | None = Query(None),
     status: str | None = Query(None),
     date_from: datetime | None = Query(None),
@@ -82,6 +102,7 @@ async def list_transactions(
     amount_min: float | None = Query(None),
     amount_max: float | None = Query(None),
     search: str | None = Query(None),
+    recurring: bool | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
 ) -> TransactionGroupListResponse:
@@ -89,9 +110,11 @@ async def list_transactions(
     List transactions with optional filters.
 
     Supports filtering by:
-    - wallet_id: Filter by wallet
+    - wallet_id: Filter to these wallets (OR semantics). Repeatable.
+    - wallet_id_not: Exclude these wallets (NULL-safe). Repeatable.
     - vendor_id: Filter by vendor
-    - category_id: Filter by category
+    - category_id: Filter to these categories (OR semantics). Repeatable.
+    - category_id_not: Exclude these categories (NULL-safe). Repeatable.
     - direction: "debit" or "credit"
     - status: "posted", "reversed", "refunded", "unknown"
     - date_from/date_to: Date range (occurred_at)
@@ -104,13 +127,146 @@ async def list_transactions(
 
     # Apply filters
     if wallet_id:
-        query = query.filter(TransactionGroup.wallet_id == wallet_id)
+        query = query.filter(TransactionGroup.wallet_id.in_(wallet_id))
+
+    if wallet_id_not:
+        # NULL-safe: rows with no wallet aren't dropped by a wallet exclusion.
+        query = query.filter(
+            (TransactionGroup.wallet_id.is_(None))
+            | (~TransactionGroup.wallet_id.in_(wallet_id_not))
+        )
 
     if vendor_id:
         query = query.filter(TransactionGroup.vendor_id == vendor_id)
 
     if category_id:
-        query = query.filter(TransactionGroup.category_id == category_id)
+        query = query.filter(TransactionGroup.category_id.in_(category_id))
+
+    if category_id_not:
+        # NULL-safe: a transaction with no category should NOT be excluded.
+        # The user excluded specific categories, not "uncategorized".
+        query = query.filter(
+            (TransactionGroup.category_id.is_(None))
+            | (~TransactionGroup.category_id.in_(category_id_not))
+        )
+
+    if direction:
+        try:
+            dir_enum = TransactionDirection(direction)
+            query = query.filter(TransactionGroup.direction == dir_enum)
+        except ValueError:
+            pass
+
+    if status:
+        try:
+            status_enum = TransactionStatus(status)
+            query = query.filter(TransactionGroup.status == status_enum)
+        except ValueError:
+            pass
+
+    if date_from:
+        query = query.filter(TransactionGroup.occurred_at >= date_from)
+
+    if date_to:
+        query = query.filter(TransactionGroup.occurred_at <= date_to)
+
+    if amount_min is not None:
+        query = query.filter(TransactionGroup.amount >= amount_min)
+
+    if amount_max is not None:
+        query = query.filter(TransactionGroup.amount <= amount_max)
+
+    if recurring is not None:
+        query = query.filter(TransactionGroup.is_recurring == recurring)
+
+    if search:
+        search_filter = f"%{search}%"
+        query = query.outerjoin(Vendor).filter(
+            or_(
+                TransactionGroup.notes.ilike(search_filter),
+                TransactionGroup.vendor_raw.ilike(search_filter),
+                Vendor.canonical_name.ilike(search_filter),
+            )
+        )
+
+    # Get total count
+    total = query.count()
+
+    # Apply pagination and ordering
+    offset = (page - 1) * page_size
+    transactions = (
+        query.order_by(TransactionGroup.occurred_at.desc()).offset(offset).limit(page_size).all()
+    )
+
+    # Build response
+    return TransactionGroupListResponse(
+        transactions=[_build_transaction_response(txn) for txn in transactions],
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=(offset + len(transactions)) < total,
+    )
+
+
+@router.get("/summary", response_model=TransactionSummary)
+async def transactions_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    wallet_id: list[UUID] = Query(
+        default=[],
+        description="Filter to these wallets (OR). Repeat the param to include multiple.",
+    ),
+    wallet_id_not: list[UUID] = Query(
+        default=[],
+        description="Exclude these wallets. Repeat to exclude multiple.",
+    ),
+    vendor_id: UUID | None = Query(None),
+    category_id: list[UUID] = Query(
+        default=[],
+        description="Filter to these categories (OR). Repeat the param to include multiple.",
+    ),
+    category_id_not: list[UUID] = Query(
+        default=[],
+        description="Exclude these categories. Repeat to exclude multiple.",
+    ),
+    direction: str | None = Query(None),
+    status: str | None = Query(None),
+    date_from: datetime | None = Query(None),
+    date_to: datetime | None = Query(None),
+    amount_min: Decimal | None = Query(None),
+    amount_max: Decimal | None = Query(None),
+    search: str | None = Query(None),
+) -> TransactionSummary:
+    """
+    Aggregate totals for transactions matching the given filters.
+
+    Mirrors the filter set on the list endpoint (minus pagination).
+    Returns total debit/credit/net amounts, counts, and average debit.
+    """
+    query = db.query(TransactionGroup)
+
+    if wallet_id:
+        query = query.filter(TransactionGroup.wallet_id.in_(wallet_id))
+
+    if wallet_id_not:
+        # NULL-safe: rows with no wallet aren't dropped by a wallet exclusion.
+        query = query.filter(
+            (TransactionGroup.wallet_id.is_(None))
+            | (~TransactionGroup.wallet_id.in_(wallet_id_not))
+        )
+
+    if vendor_id:
+        query = query.filter(TransactionGroup.vendor_id == vendor_id)
+
+    if category_id:
+        query = query.filter(TransactionGroup.category_id.in_(category_id))
+
+    if category_id_not:
+        # NULL-safe: uncategorized rows are NOT dropped by category excludes.
+        query = query.filter(
+            (TransactionGroup.category_id.is_(None))
+            | (~TransactionGroup.category_id.in_(category_id_not))
+        )
 
     if direction:
         try:
@@ -148,23 +304,39 @@ async def list_transactions(
             )
         )
 
-    # Get total count
-    total = query.count()
-
-    # Apply pagination and ordering
-    offset = (page - 1) * page_size
-    transactions = (
-        query.order_by(TransactionGroup.occurred_at.desc()).offset(offset).limit(page_size).all()
+    rows = query.all()
+    debits = [r.amount for r in rows if r.direction == TransactionDirection.DEBIT]
+    credits = [r.amount for r in rows if r.direction == TransactionDirection.CREDIT]
+    total_debit = sum(debits, Decimal("0.00"))
+    total_credit = sum(credits, Decimal("0.00"))
+    avg_debit = (total_debit / len(debits)) if debits else Decimal("0.00")
+    return TransactionSummary(
+        total_debit=total_debit,
+        total_credit=total_credit,
+        net=total_credit - total_debit,
+        debit_count=len(debits),
+        credit_count=len(credits),
+        avg_debit=avg_debit,
     )
 
-    # Build response
-    return TransactionGroupListResponse(
-        transactions=[_build_transaction_response(txn) for txn in transactions],
-        total=total,
-        page=page,
-        page_size=page_size,
-        has_more=(offset + len(transactions)) < total,
+
+@router.patch("/bulk", response_model=BulkUpdateResponse)
+async def bulk_update_recurring(
+    payload: BulkRecurringUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> BulkUpdateResponse:
+    """Bulk-toggle is_recurring on a list of transaction ids."""
+    updated = (
+        db.query(TransactionGroup)
+        .filter(TransactionGroup.id.in_(payload.ids))
+        .update(
+            {TransactionGroup.is_recurring: payload.is_recurring},
+            synchronize_session=False,
+        )
     )
+    db.commit()
+    return BulkUpdateResponse(updated=updated)
 
 
 @router.get("/{transaction_id}", response_model=TransactionDetailResponse)
@@ -241,6 +413,34 @@ async def get_transaction(
         updated_at=txn.updated_at,
         evidence=evidence_responses,
     )
+
+
+@router.patch("/{transaction_id}", response_model=TransactionGroupResponse)
+async def update_transaction(
+    transaction_id: UUID,
+    payload: TransactionUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TransactionGroupResponse:
+    """Update mutable fields on a transaction (category, recurring flag)."""
+    txn = (
+        db.query(TransactionGroup)
+        .options(joinedload(TransactionGroup.vendor), joinedload(TransactionGroup.category))
+        .filter(TransactionGroup.id == transaction_id)
+        .first()
+    )
+    if not txn:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    if payload.category_id is not None:
+        txn.category_id = payload.category_id
+    if payload.is_recurring is not None:
+        txn.is_recurring = payload.is_recurring
+    txn.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(txn)
+
+    return _build_transaction_response(txn)
 
 
 @router.patch("/{transaction_id}/notes", response_model=TransactionGroupResponse)

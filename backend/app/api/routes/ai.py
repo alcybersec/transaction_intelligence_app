@@ -19,7 +19,8 @@ from app.db.models import (
 )
 from app.schemas.ai import (
     AcceptSuggestionRequest,
-    AISettingsResponse,
+    AISettings,
+    AISettingsUpdate,
     BatchSuggestRequest,
     BatchSuggestResponse,
     BulkAcceptResponse,
@@ -45,6 +46,9 @@ from app.schemas.ai import (
 from app.services.categorization import CategorizationService
 from app.services.chat import ChatService
 from app.services.ollama import get_ollama_service
+from app.services.settings_store import get_setting, put_setting
+
+AI_SETTINGS_KEY = "ai_settings"
 
 router = APIRouter()
 
@@ -71,21 +75,38 @@ def get_ollama_status(
     )
 
 
-@router.get("/settings", response_model=AISettingsResponse)
+@router.get("/settings", response_model=AISettings)
 def get_ai_settings(
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get AI settings."""
-    ollama = get_ollama_service()
-    status_info = ollama.check_connection()
+    """Get persisted AI settings (Ollama URL/model, feature toggles).
 
-    return AISettingsResponse(
-        ollama_configured=ollama.is_configured,
-        ollama_base_url=ollama.base_url if ollama.is_configured else None,
-        ollama_model=ollama.model,
-        ollama_connected=status_info.get("connected", False),
-        available_models=status_info.get("models", []),
-    )
+    Returns the values stored in `app_settings.ai_settings`. Live connection
+    status is exposed separately by `GET /ai/status`.
+    """
+    stored = get_setting(db, AI_SETTINGS_KEY, default={}) or {}
+    return AISettings(**stored)
+
+
+@router.patch("/settings", response_model=AISettings)
+def update_ai_settings(
+    payload: AISettingsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Patch persisted AI settings; merges feature toggles, replaces URL/model."""
+    current = dict(get_setting(db, AI_SETTINGS_KEY, default={}) or {})
+    if payload.ollama_base_url is not None:
+        current["ollama_base_url"] = payload.ollama_base_url
+    if payload.ollama_model is not None:
+        current["ollama_model"] = payload.ollama_model
+    if payload.features is not None:
+        merged = dict(current.get("features") or {})
+        merged.update(payload.features)
+        current["features"] = merged
+    put_setting(db, AI_SETTINGS_KEY, current)
+    return AISettings(**current)
 
 
 # === Category Suggestions ===

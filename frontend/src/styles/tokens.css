@@ -1,0 +1,121 @@
+/* ============================================================
+   Transaction Intelligence — Design Tokens
+   Refined fintech minimal · emerald accent · serif + sans
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+
+:root {
+  /* ---- Type ---- */
+  --font-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* ---- Accent (emerald) — overridable by Tweaks ---- */
+  --accent: oklch(0.57 0.108 157);
+  --accent-strong: oklch(0.50 0.115 157);
+  --accent-fg: #ffffff;
+  --accent-soft: oklch(0.95 0.028 157);
+  --accent-ring: oklch(0.57 0.108 157 / 0.32);
+
+  /* ---- Categorical palette (muted, harmonious) ---- */
+  --c1: oklch(0.62 0.11 157);   /* green   */
+  --c2: oklch(0.64 0.10 220);   /* blue    */
+  --c3: oklch(0.66 0.11 285);   /* violet  */
+  --c4: oklch(0.72 0.12 75);    /* amber   */
+  --c5: oklch(0.64 0.13 25);    /* red     */
+  --c6: oklch(0.66 0.10 195);   /* teal    */
+  --c7: oklch(0.66 0.12 330);   /* pink    */
+  --c8: oklch(0.60 0.04 260);   /* slate   */
+
+  --radius-xl: 20px;
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 7px;
+
+  --shadow-sm: 0 1px 2px rgba(20, 22, 24, 0.04);
+  --shadow-md: 0 4px 16px -4px rgba(20, 22, 24, 0.10), 0 1px 3px rgba(20,22,24,0.04);
+  --shadow-lg: 0 18px 48px -12px rgba(20, 22, 24, 0.22);
+
+  --maxw: 1240px;
+}
+
+/* Lift content cap on wider screens so ultrawide displays don't waste room.
+   Below 1600px viewports the handoff's 1240px intent is preserved. */
+@media (min-width: 1600px) {
+  :root { --maxw: 1440px; }
+}
+@media (min-width: 1920px) {
+  :root { --maxw: 1600px; }
+}
+@media (min-width: 2400px) {
+  :root { --maxw: 1800px; }
+}
+
+/* ---- Light ---- */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  --bg: #faf9f6;
+  --bg-grad-1: #f5f4ef;
+  --surface: #ffffff;
+  --surface-2: #f5f4f0;
+  --surface-3: #efeee9;
+  --line: #e8e7e0;
+  --line-strong: #dbdacf;
+  --text: #1a1c1a;
+  --text-2: #696d68;
+  --text-3: #9b9e98;
+  --debit: oklch(0.55 0.155 25);
+  --debit-soft: oklch(0.95 0.03 25);
+  --credit: oklch(0.52 0.115 157);
+  --warn: oklch(0.66 0.13 70);
+  --warn-soft: oklch(0.95 0.04 80);
+}
+
+/* ---- Dark ---- */
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0c0d0f;
+  --bg-grad-1: #111316;
+  --surface: #16181b;
+  --surface-2: #1c1f23;
+  --surface-3: #23262b;
+  --line: #262a2f;
+  --line-strong: #333840;
+  --text: #ecedeb;
+  --text-2: #9aa09c;
+  --text-3: #696f6b;
+  --accent: oklch(0.72 0.125 157);
+  --accent-strong: oklch(0.78 0.13 157);
+  --accent-fg: #07120c;
+  --accent-soft: oklch(0.30 0.06 157);
+  --accent-ring: oklch(0.72 0.125 157 / 0.34);
+  --debit: oklch(0.70 0.155 25);
+  --debit-soft: oklch(0.30 0.07 25);
+  --credit: oklch(0.74 0.12 157);
+  --warn: oklch(0.78 0.13 75);
+  --warn-soft: oklch(0.32 0.07 75);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 6px 22px -6px rgba(0,0,0,0.5);
+  --shadow-lg: 0 24px 60px -16px rgba(0,0,0,0.66);
+  --c1: oklch(0.74 0.12 157);
+  --c2: oklch(0.72 0.11 220);
+  --c3: oklch(0.74 0.11 285);
+  --c4: oklch(0.80 0.12 75);
+  --c5: oklch(0.72 0.14 25);
+  --c6: oklch(0.74 0.10 195);
+  --c7: oklch(0.74 0.12 330);
+  --c8: oklch(0.70 0.04 260);
+}
+
+/* utility keyframes */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes growBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}

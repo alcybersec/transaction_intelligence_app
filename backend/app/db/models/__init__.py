@@ -1,10 +1,12 @@
 """Database models package."""
 
+from app.db.models.app_setting import AppSetting
 from app.db.models.budget import Budget
 from app.db.models.chat import ChatMessage, ChatSession
 from app.db.models.institution import Institution, Instrument, InstrumentType
 from app.db.models.message import Message, MessageSource, ParseMode, ParseStatus
 from app.db.models.report import Report, ReportGeneratedBy
+from app.db.models.savings_goal import SavingsGoal
 from app.db.models.transaction import (
     EvidenceRole,
     TransactionDirection,
@@ -13,6 +15,7 @@ from app.db.models.transaction import (
     TransactionStatus,
 )
 from app.db.models.user import User
+from app.db.models.user_session import UserSession
 from app.db.models.vendor import (
     Category,
     CategorySuggestion,
@@ -49,12 +52,17 @@ __all__ = [
     "EvidenceRole",
     # User
     "User",
+    "UserSession",
     # Budget
     "Budget",
     # Report
     "Report",
     "ReportGeneratedBy",
+    # Savings goal
+    "SavingsGoal",
     # Chat
     "ChatSession",
     "ChatMessage",
+    # App settings
+    "AppSetting",
 ]

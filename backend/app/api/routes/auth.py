@@ -2,20 +2,30 @@
 
 import time
 from collections import defaultdict
+from hashlib import sha256
+from uuid import UUID
 
+import pyotp
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_admin_user, get_current_user
 from app.db.models import User
+from app.db.models.user_session import UserSession
 from app.db.session import get_db
 from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
     RefreshRequest,
     RefreshResponse,
+    SessionResponse,
     TokenResponse,
+    TwoFactorEnableResponse,
+    TwoFactorVerifyRequest,
+    TwoFactorVerifyResponse,
     UserCreate,
+    UserMeUpdate,
     UserResponse,
 )
 from app.services.auth import (
@@ -23,6 +33,8 @@ from app.services.auth import (
     AuthenticationError,
     AuthService,
 )
+
+TOTP_ISSUER = "Transaction Intelligence"
 
 router = APIRouter()
 
@@ -79,6 +91,16 @@ async def login(
         # Get user for response
         user = auth_service.get_user_by_username(payload.username)
 
+        # Persist a session row so the user can list + revoke devices.
+        session_row = UserSession(
+            user_id=user.id,
+            refresh_token_hash=sha256(result["refresh_token"].encode()).hexdigest(),
+            user_agent=(request.headers.get("user-agent") or None),
+            ip_address=(request.client.host if request.client else None),
+        )
+        db.add(session_row)
+        db.commit()
+
         return TokenResponse(
             access_token=result["access_token"],
             refresh_token=result["refresh_token"],
@@ -86,7 +108,9 @@ async def login(
             user=UserResponse(
                 id=user.id,
                 username=user.username,
+                email=user.email,
                 display_name=user.display_name,
+                preferences=dict(user.preferences or {}),
                 is_admin=user.is_admin,
                 is_active=user.is_active,
                 created_at=user.created_at,
@@ -140,12 +164,64 @@ async def get_current_user_info(
     return UserResponse(
         id=current_user.id,
         username=current_user.username,
+        email=current_user.email,
         display_name=current_user.display_name,
+        preferences=dict(current_user.preferences or {}),
         is_admin=current_user.is_admin,
         is_active=current_user.is_active,
         created_at=current_user.created_at,
         last_login_at=current_user.last_login_at,
     )
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_current_user(
+    payload: UserMeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    """Update the current user's profile.
+
+    `preferences` is merged into the existing preferences dict (not replaced).
+    """
+    if payload.email is not None:
+        current_user.email = str(payload.email)
+    if payload.display_name is not None:
+        current_user.display_name = payload.display_name
+    if payload.preferences is not None:
+        merged = dict(current_user.preferences or {})
+        merged.update(payload.preferences)
+        current_user.preferences = merged
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already in use",
+        ) from None
+    db.refresh(current_user)
+    return UserResponse(
+        id=current_user.id,
+        username=current_user.username,
+        email=current_user.email,
+        display_name=current_user.display_name,
+        preferences=dict(current_user.preferences or {}),
+        is_admin=current_user.is_admin,
+        is_active=current_user.is_active,
+        created_at=current_user.created_at,
+        last_login_at=current_user.last_login_at,
+    )
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_current_user(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete the current user's account."""
+    db.delete(current_user)
+    db.commit()
 
 
 @router.post("/change-password")
@@ -258,3 +334,114 @@ async def initial_setup(
         "password": "changeme",
         "warning": "Please change the default password immediately!",
     }
+
+
+# ---------------------------------------------------------------------------
+# Two-factor authentication (TOTP)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/2fa/enable", response_model=TwoFactorEnableResponse)
+async def enable_2fa(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TwoFactorEnableResponse:
+    """Generate a new TOTP secret for the current user.
+
+    Stores the secret on the user row but marks 2FA as unverified until the
+    user successfully verifies a code via ``POST /auth/2fa/verify``.
+    """
+    secret = pyotp.random_base32()
+    current_user.two_factor_secret = secret
+    current_user.two_factor_verified = False
+    db.commit()
+    otpauth_url = pyotp.TOTP(secret).provisioning_uri(
+        name=current_user.username, issuer_name=TOTP_ISSUER
+    )
+    return TwoFactorEnableResponse(secret=secret, otpauth_url=otpauth_url)
+
+
+@router.post("/2fa/verify", response_model=TwoFactorVerifyResponse)
+async def verify_2fa(
+    payload: TwoFactorVerifyRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TwoFactorVerifyResponse:
+    """Verify a TOTP code against the user's stored secret."""
+    if not current_user.two_factor_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA not enabled",
+        )
+    if not pyotp.TOTP(current_user.two_factor_secret).verify(payload.code, valid_window=1):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid code",
+        )
+    current_user.two_factor_verified = True
+    db.commit()
+    return TwoFactorVerifyResponse(verified=True)
+
+
+@router.delete("/2fa", status_code=status.HTTP_204_NO_CONTENT)
+async def disable_2fa(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Clear the user's 2FA secret + verified flag."""
+    current_user.two_factor_secret = None
+    current_user.two_factor_verified = False
+    db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Session management
+# ---------------------------------------------------------------------------
+
+
+@router.get("/sessions", response_model=list[SessionResponse])
+async def list_sessions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[SessionResponse]:
+    """Return all active session rows owned by the current user."""
+    rows = (
+        db.query(UserSession)
+        .filter(UserSession.user_id == current_user.id)
+        .order_by(UserSession.created_at.desc())
+        .all()
+    )
+    return [
+        SessionResponse(
+            id=str(r.id),
+            user_agent=r.user_agent,
+            ip_address=r.ip_address,
+            created_at=r.created_at.isoformat(),
+            last_seen_at=r.last_seen_at.isoformat(),
+        )
+        for r in rows
+    ]
+
+
+@router.delete("/sessions", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_all_sessions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete every session row for the current user."""
+    db.query(UserSession).filter(UserSession.user_id == current_user.id).delete()
+    db.commit()
+
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_session(
+    session_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete a specific session row (if it belongs to the current user)."""
+    db.query(UserSession).filter(
+        UserSession.id == session_id,
+        UserSession.user_id == current_user.id,
+    ).delete()
+    db.commit()

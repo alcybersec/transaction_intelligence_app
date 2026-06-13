@@ -11,7 +11,6 @@ from sqlalchemy import (
     Index,
     Numeric,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -39,11 +38,12 @@ class Budget(Base):
         comment="Optional wallet scope; null means all wallets",
     )
 
-    # Category this budget applies to
+    # Category this budget applies to.
+    # Null = "overall monthly budget" covering all spending in the month.
     category_id = Column(
         UUID(as_uuid=True),
         ForeignKey("categories.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
 
     # Budget period (stored as first day of month)
@@ -77,10 +77,16 @@ class Budget(Base):
     wallet = relationship("Wallet")
     category = relationship("Category")
 
+    # Uniqueness is enforced at the DB layer via two partial indexes (see
+    # alembic 014_budget_category_nullable):
+    #   - uq_budget_wallet_category_month over (wallet_id, category_id, month)
+    #     WHERE category_id IS NOT NULL
+    #   - uq_budget_wallet_overall_month over (COALESCE(wallet_id), month)
+    #     WHERE category_id IS NULL
+    # SQLAlchemy can't model partial-unique-indexes portably, so we omit them
+    # here. Tests use Base.metadata.create_all which means duplicate overall
+    # budgets are rejected at the service level (ValueError -> 409).
     __table_args__ = (
-        UniqueConstraint(
-            "wallet_id", "category_id", "month", name="uq_budget_wallet_category_month"
-        ),
         Index("ix_budgets_wallet", "wallet_id"),
         Index("ix_budgets_category", "category_id"),
         Index("ix_budgets_month", "month"),

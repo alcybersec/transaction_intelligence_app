@@ -154,3 +154,36 @@ export async function fetchTopVendors(params: {
   if (!res.ok) throw new Error('Failed to fetch top vendors')
   return res.json()
 }
+
+// ============== Insights ==============
+
+export interface TopMerchantAlt {
+  merchant: string
+  current_avg: string
+  suggested_alt: string
+  savings_pct: number
+}
+
+export interface BudgetForecast {
+  category: string
+  forecast_overrun_pct: number
+}
+
+export interface InsightsResponse {
+  subscriptions_count: number
+  top_merchant_alt: TopMerchantAlt | null
+  budget_forecast: BudgetForecast | null
+  spending_trend: 'up' | 'down' | 'flat' | null
+  spending_change_percentage: number
+}
+
+export async function fetchInsights(
+  periodStart: string,
+  periodEnd: string
+): Promise<InsightsResponse> {
+  const res = await authFetch(
+    `${API_URL}/analytics/insights?period_start=${periodStart}&period_end=${periodEnd}`
+  )
+  if (!res.ok) throw new Error(`fetchInsights: ${res.status}`)
+  return res.json()
+}

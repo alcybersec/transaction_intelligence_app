@@ -43,8 +43,7 @@ class EmiratesNBDCardPurchaseParser:
 
     # Balance pattern
     BALANCE_PATTERN = re.compile(
-        r"(?:Available|Avl\.?)\s*(?:Balance|Bal\.?|Limit)[:\s]*"
-        r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
+        r"(?:Available|Avl\.?)\s*(?:Balance|Bal\.?|Limit)[:\s]*" r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
         re.IGNORECASE,
     )
 
@@ -142,8 +141,7 @@ class EmiratesNBDCreditParser:
     )
 
     BALANCE_PATTERN = re.compile(
-        r"(?:Available|Avl\.?)\s*(?:Balance|Bal\.?)[:\s]*"
-        r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
+        r"(?:Available|Avl\.?)\s*(?:Balance|Bal\.?)[:\s]*" r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
         re.IGNORECASE,
     )
 
@@ -205,8 +203,7 @@ class EmiratesNBDDebitParser:
     )
 
     BALANCE_PATTERN = re.compile(
-        r"(?:Available|Avl\.?)\s*(?:Balance|Bal\.?|Limit)[:\s]*"
-        r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
+        r"(?:Available|Avl\.?)\s*(?:Balance|Bal\.?|Limit)[:\s]*" r"([A-Z]{3})?\s*([\d,]+\.?\d*)",
         re.IGNORECASE,
     )
 

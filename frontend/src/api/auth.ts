@@ -9,7 +9,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 export interface User {
   id: string
   username: string
+  email?: string | null
   display_name: string | null
+  preferences?: Record<string, unknown>
   is_admin: boolean
   is_active: boolean
   created_at: string
@@ -160,6 +162,62 @@ export async function setupInitialUser(): Promise<{
   return res.json()
 }
 
+// ============== 2FA ==============
+
+export interface TwoFactorEnableResponse {
+  secret: string
+  otpauth_url: string
+}
+
+export async function enable2FA(): Promise<TwoFactorEnableResponse> {
+  const r = await authFetch(`${API_URL}/auth/2fa/enable`, { method: 'POST' })
+  if (!r.ok) throw new Error(`enable2FA: ${r.status}`)
+  return r.json()
+}
+
+export async function verify2FA(code: string): Promise<{ verified: boolean }> {
+  const r = await authFetch(`${API_URL}/auth/2fa/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+  if (!r.ok) throw new Error(`verify2FA: ${r.status}`)
+  return r.json()
+}
+
+export async function disable2FA(): Promise<void> {
+  const r = await authFetch(`${API_URL}/auth/2fa`, { method: 'DELETE' })
+  if (!r.ok) throw new Error(`disable2FA: ${r.status}`)
+}
+
+// ============== Sessions ==============
+
+export interface UserSessionRow {
+  id: string
+  user_agent: string | null
+  ip_address: string | null
+  created_at: string
+  last_seen_at: string
+}
+
+export async function fetchSessions(): Promise<UserSessionRow[]> {
+  const r = await authFetch(`${API_URL}/auth/sessions`)
+  if (!r.ok) throw new Error(`fetchSessions: ${r.status}`)
+  return r.json()
+}
+
+export async function revokeAllSessions(): Promise<void> {
+  const r = await authFetch(`${API_URL}/auth/sessions`, { method: 'DELETE' })
+  if (!r.ok) throw new Error(`revokeAllSessions: ${r.status}`)
+}
+
+export async function revokeSession(sessionId: string): Promise<void> {
+  const r = await authFetch(`${API_URL}/auth/sessions/${sessionId}`, {
+    method: 'DELETE',
+  })
+  if (!r.ok) throw new Error(`revokeSession: ${r.status}`)
+}
+
 // ============== Authenticated Fetch Helper ==============
 
 export async function authFetch(
@@ -192,4 +250,30 @@ export async function authFetch(
   }
 
   return res
+}
+
+// ============== Profile Update / Delete ==============
+
+export async function updateProfile(patch: {
+  email?: string
+  display_name?: string
+  preferences?: Record<string, unknown>
+}): Promise<User> {
+  const res = await authFetch(`${API_URL}/auth/me`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) {
+    throw new Error(`updateProfile: ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function deleteAccount(): Promise<void> {
+  const res = await authFetch(`${API_URL}/auth/me`, { method: 'DELETE' })
+  if (!res.ok) {
+    throw new Error(`deleteAccount: ${res.status}`)
+  }
+  clearAuth()
 }
