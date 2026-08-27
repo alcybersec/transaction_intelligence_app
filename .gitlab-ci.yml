@@ -12,6 +12,7 @@
 stages:
   - lint
   - test
+  - deploy
 
 default:
   # The runner is registered run_untagged:false, so every job must opt in.
@@ -57,3 +58,41 @@ test:
     - psql "$DATABASE_URL" -c "CREATE DATABASE txndb_test;"
   script:
     - pytest -v
+
+# ---------------------------------------------------------------------------
+# Deploy
+#
+# This replaces .github/workflows/deploy.yml, which was DELETED in this commit
+# because it was a ghost pipeline: it built three images, pushed them to GHCR,
+# and wrote both compose files to /opt/myapp -- but /opt/myapp/deploy.sh runs
+#   docker compose up -d --build --remove-orphans
+# with the BASE compose only. The base file declares `build:` for api/worker/
+# frontend, so compose rebuilt locally (myapp-api:latest) and the GHCR images
+# it had just pushed were never consumed by anything. deploy.sh is, and has
+# been, the real deploy path.
+#
+# The SSH key is command-restricted on apps-vm:
+#   command="/opt/myapp/deploy.sh",no-agent-forwarding,no-port-forwarding,no-pty
+# so this job cannot run anything else, and no command is passed below.
+#
+# MANUAL ON PURPOSE. /opt/myapp still has origin -> GitHub, and deploy.sh does
+# `git pull --ff-only origin main`. Until that origin is repointed at GitLab,
+# this job would deploy whatever GitHub has, not what GitLab just tested.
+# Switch to automatic in the same change that repoints origin.
+deploy:
+  stage: deploy
+  image: alpine:latest
+  needs: [test]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+      allow_failure: false
+  before_script:
+    - apk add --no-cache openssh-client
+    - chmod 600 "$DEPLOY_SSH_KEY"
+  script:
+    - ssh -i "$DEPLOY_SSH_KEY" -o StrictHostKeyChecking=accept-new
+        -o UserKnownHostsFile=/dev/null "$DEPLOY_USER@$DEPLOY_HOST"
+  environment:
+    name: production
+    url: https://txn.home.aleksanlab.me
