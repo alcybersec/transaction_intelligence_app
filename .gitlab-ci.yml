@@ -1,0 +1,59 @@
+# GitLab CI for transaction_intelligence_app.
+# Ported from .github/workflows/ci.yml (2026-08-28).
+#
+# Deliberately NOT a literal translation. The GitHub workflow ran `docker build`
+# with heredoc Dockerfiles and hand-rolled a bridge network plus a postgres
+# container, because a self-hosted Actions runner has host Docker access.
+# The GitLab runner on LXC 207 uses the docker executor with privileged=false,
+# so `docker build` inside a job would fail. GitLab's native `image:` +
+# `services:` does the same work with no Docker-in-Docker at all -- the job runs
+# IN the python image and postgres is a sibling container on the job network.
+
+stages:
+  - lint
+  - test
+
+default:
+  # The runner is registered run_untagged:false, so every job must opt in.
+  tags:
+    - homelab
+    - docker
+  interruptible: true
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_CACHE_DIR: "1"
+
+lint:
+  stage: lint
+  image: python:3.12-slim
+  script:
+    - pip install ruff
+    - cd backend
+    - ruff check .
+    - ruff format --check .
+
+test:
+  stage: test
+  image: python:3.12-slim
+  services:
+    - name: postgres:16-alpine
+      alias: postgres
+  variables:
+    POSTGRES_USER: txnuser
+    POSTGRES_PASSWORD: txnpass
+    POSTGRES_DB: txndb
+    # Reachable by service alias on the job network.
+    DATABASE_URL: postgresql://txnuser:txnpass@postgres:5432/txndb
+    TEST_DATABASE_URL: postgresql://txnuser:txnpass@postgres:5432/txndb_test
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends build-essential libpq-dev postgresql-client
+    - cd backend
+    - pip install -r requirements.txt
+    - pip install pytest pytest-asyncio
+    # `services:` starts postgres in parallel with the job, so wait for it.
+    - for i in $(seq 1 30); do pg_isready -h postgres -U txnuser -d txndb && break; sleep 1; done
+    - psql "$DATABASE_URL" -c "CREATE DATABASE txndb_test;"
+  script:
+    - pytest -v
