@@ -75,17 +75,24 @@ test:
 #   command="/opt/myapp/deploy.sh",no-agent-forwarding,no-port-forwarding,no-pty
 # so this job cannot run anything else, and no command is passed below.
 #
-# MANUAL ON PURPOSE. /opt/myapp still has origin -> GitHub, and deploy.sh does
-# `git pull --ff-only origin main`. Until that origin is repointed at GitLab,
-# this job would deploy whatever GitHub has, not what GitLab just tested.
-# Switch to automatic in the same change that repoints origin.
+# AUTOMATIC as of 2026-08-28: /opt/myapp's origin now points at
+# gitlab-homelab:alcybersec/transaction_intelligence_app.git via a read-only
+# deploy key, so `git pull --ff-only origin main` inside deploy.sh pulls what
+# this pipeline just tested.
+#
+# Two known fragilities on the deploy host, neither blocking today:
+#   * deploy.sh is UNTRACKED in /opt/myapp -- it exists only on apps-vm, so it
+#     is not versioned and would not survive a rebuild.
+#   * docker-compose.yml is locally MODIFIED there. The only semantic delta is
+#     an empty top-level `networks: {}`, so it changes nothing -- but
+#     `git pull --ff-only` will FAIL the first time a commit touches that file.
 deploy:
   stage: deploy
   image: alpine:latest
   needs: [test]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
+      when: on_success
       allow_failure: false
   before_script:
     - apk add --no-cache openssh-client
